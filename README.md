@@ -8,7 +8,7 @@
 [**MagNet**](https://github.com/VinAIResearch/MagNet), a multi-scale framework that resolves local ambiguity by looking at the image at multiple magnification levels, has multiple processing stages, where each stage corresponds to a magnification level, and the output of one stage is fed into the next stage for coarse-to-fine information propagation. Experiments on three high-resolution datasets of urban views, aerial scenes, and medical images show that MagNet consistently outperforms the state-of-the-art methods by a significant margin.
 ![](https://i.imgur.com/fCPhKyX.png)
 
-Details of the PhoNLP model architecture and experimental results can be found in our [following paper]():
+Details of the MagNet model architecture and experimental results can be found in our [following paper]():
 ```
 @inproceedings{huynh2021magnet,
   title={Progressive Semantic Segmentation},
@@ -44,3 +44,5 @@ pip install -r requirements.txt
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
+
+
