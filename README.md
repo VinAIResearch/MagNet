@@ -36,6 +36,21 @@ pip install -r requirements.txt
 
 ## Dataset
 
+### Cityscapes
+Please download two files `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip` in this [page](https://www.cityscapes-dataset.com/downloads/) to the directory `data` and run the script below to prepare the data:
+```bash
+# In root directory
+cd data
+sh ./prepare_cityscapes.sh
+```
+
+### DeepGlobe
+Please register [here](https://competitions.codalab.org/competitions/18468) and download **Starting Kit** of the `#1 Development` Phase in this [page](https://competitions.codalab.org/competitions/18468#participate-get_starting_kit) to the directory `data` and run the script below to prepare the data:
+```bash
+# In root directory
+cd data
+sh ./prepare_deepglobe.sh
+
 ## Pretrained models
 
 ## Training
