@@ -50,6 +50,7 @@ Please register [here](https://competitions.codalab.org/competitions/18468) and 
 # In root directory
 cd data
 sh ./prepare_deepglobe.sh
+```
 
 ## Pretrained models
 
