@@ -9,12 +9,16 @@
 ![](https://i.imgur.com/fCPhKyX.png)
 
 Details of the MagNet model architecture and experimental results can be found in our [following paper]():
+
+Progressive Semantic Segmentation. \
+C. Huynh, A. Tran, K. Luu, M. Hoai (2021) \
+IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
 ```
-@inproceedings{huynh2021magnet,
-  title={Progressive Semantic Segmentation},
-  author={Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
-  year={2021},
+@inproceedings{m_Huynh-etal-CVPR21,
+  author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
+  title = {Progressive Semantic Segmentation},
+  year = {2021}, \
+  booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)},
 }
 ```
 **Please CITE** our paper when MagNet is used to help produce published results or incorporated into other software.
@@ -60,22 +64,6 @@ sh ./prepare_deepglobe.sh
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
-
-
-## Citation
-
-If you find the code useful, please cite: 
-
-Progressive Semantic Segmentation. \
-C. Huynh, A. Tran, K. Luu, M. Hoai (2021) \
-IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
-
-@inproceedings{m_Huynh-etal-CVPR21, \
-  author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai}, \
-  title = {Progressive Semantic Segmentation}, \
-  year = {2021}, \
-  booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)}, \
-}
 
 
 
