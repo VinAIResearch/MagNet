@@ -29,8 +29,8 @@ Before reading detail instructions about training and testing MagNet on your own
 
 ## Requirements
 
-The framework is tested on machines with following specifications:
-- Python >= 3.5
+The framework is tested on machines with following environment:
+- Python >= 3.6
 - CUDA >= 10.0
 
 To install dependencies, please run the following command:
@@ -54,6 +54,14 @@ Please register [here](https://competitions.codalab.org/competitions/18468) and 
 # In root directory
 cd data
 sh ./prepare_deepglobe.sh
+```
+
+### Gleason
+Following the challenge, we have prepared a processed images and ground-truths. To download the dataset, please run the script below:
+```bash
+# In root directory
+cd data
+sh ./prepare_gleason.sh
 ```
 
 ## Pretrained models
