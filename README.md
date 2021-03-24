@@ -9,12 +9,16 @@
 ![](https://i.imgur.com/fCPhKyX.png)
 
 Details of the MagNet model architecture and experimental results can be found in our [following paper]():
+
+Progressive Semantic Segmentation. \
+C. Huynh, A. Tran, K. Luu, M. Hoai (2021) \
+IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
 ```
-@inproceedings{huynh2021magnet,
-  title={Progressive Semantic Segmentation},
-  author={Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
-  year={2021},
+@inproceedings{m_Huynh-etal-CVPR21,
+  author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
+  title = {Progressive Semantic Segmentation},
+  year = {2021}, \
+  booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)},
 }
 ```
 **Please CITE** our paper when MagNet is used to help produce published results or incorporated into other software.
@@ -36,6 +40,22 @@ pip install -r requirements.txt
 
 ## Dataset
 
+### Cityscapes
+Please download two files `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip` in this [page](https://www.cityscapes-dataset.com/downloads/) to the directory `data` and run the script below to prepare the data:
+```bash
+# In root directory
+cd data
+sh ./prepare_cityscapes.sh
+```
+
+### DeepGlobe
+Please register [here](https://competitions.codalab.org/competitions/18468) and download **Starting Kit** of the `#1 Development` Phase in this [page](https://competitions.codalab.org/competitions/18468#participate-get_starting_kit) to the directory `data` and run the script below to prepare the data:
+```bash
+# In root directory
+cd data
+sh ./prepare_deepglobe.sh
+```
+
 ## Pretrained models
 
 ## Training
@@ -44,5 +64,7 @@ pip install -r requirements.txt
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
+
+
 
 
