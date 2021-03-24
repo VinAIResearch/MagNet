@@ -17,7 +17,7 @@ IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
 @inproceedings{m_Huynh-etal-CVPR21,
   author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
   title = {Progressive Semantic Segmentation},
-  year = {2021}, \
+  year = {2021},
   booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)},
 }
 ```
