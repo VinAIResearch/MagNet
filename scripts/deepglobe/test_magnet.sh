@@ -10,5 +10,5 @@ python test.py --dataset deepglobe \
 --pretrained_refinement checkpoints/deepglobe_refinement.pth \
 --num_classes 7 \
 --sub_batch_size 7 \
---n_points 1.0 \
+--n_points 0.75 \
 --smooth_kernel 5

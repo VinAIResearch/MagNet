@@ -130,7 +130,7 @@ class ResnetFPN(nn.Module):
         self.pre_rotate = np.array([0, 90, 180, 270]) * np.pi / 180
         self.post_rotate = np.array([0, 270, 180, 90]) * np.pi / 180
 
-        self.test = False
+        self.multi_test = False
 
     def load_state_dict(self, state_dict):
         state_dict = {k.replace("model.", ""):v for k,v in state_dict.items()}
@@ -205,6 +205,6 @@ class ResnetFPN(nn.Module):
         return out
 
     def forward(self, x):
-        if self.test:
+        if self.multi_test and not self.training:
             return self.run_rotation(x)
         return self._forward(x)

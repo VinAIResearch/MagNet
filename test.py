@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
-    model.test = False
+    model.multi_test = opt.multi_test
     refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
     
     # Load pretrained weights for backbone
