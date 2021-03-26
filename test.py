@@ -2,6 +2,9 @@ import math
 
 from tqdm import tqdm
 
+import numpy as np
+import cv2
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -12,6 +15,7 @@ from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
 from magnet.utils.gaussian import GaussianBlur
+from magnet.utils.metrics import getIoU, confusion_matrix
 
 def get_early_predictions(model, patches, sub_batch_size):
 
@@ -25,6 +29,11 @@ def get_early_predictions(model, patches, sub_batch_size):
             early_preds += [torch.softmax(model(batch), dim=1)]
     early_preds = torch.cat(early_preds, dim=0)
     return early_preds
+
+def get_mean_iou(conf_mat, dataset):
+    IoU = getIoU(conf_mat)
+    if dataset == "deepglobe":
+        return np.nanmean(IoU[1:])
 
 if __name__ == "__main__":
     # Parse arguments
@@ -40,7 +49,8 @@ if __name__ == "__main__":
 
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
-    refinement_model = RefinementMagNet(opt.num_classes).to(device)
+    model.test = False
+    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
     
     # Load pretrained weights for backbone
     state_dict = torch.load(opt.pretrained)
@@ -63,16 +73,32 @@ if __name__ == "__main__":
 
     # Blur function
     gaussian_blur = GaussianBlur(kernel_size=(opt.smooth_kernel, opt.smooth_kernel), sigma=(1.0, 1.0))
+
+    conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
+    refined_conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
     
     # Test dataloader
-    for idx, data in tqdm(enumerate(dataloader)):
+    pbar = tqdm(total=len(dataset))
+    for idx, data in enumerate(dataloader):
+        
+        pbar.update(1)
+
         image_patches = data["image_patches"][0]
         scale_idx = data["scale_idx"][0]
-        label = data["label"]
+        label = data["label"].numpy()
 
         # Get early predictions at all scales
         image_patches = image_patches.to(device)
         early_preds = get_early_predictions(model, image_patches, sub_batch_size)
+
+        # Compute IoU for coarse prediction
+        coarse_pred = F.interpolate(early_preds[0:1], (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
+        mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+        conf_mat += mat
+
+        description = ""
+
+        description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
         
         del image_patches
         torch.cuda.empty_cache()
@@ -82,15 +108,19 @@ if __name__ == "__main__":
             
             # Downsample
             if idx == 0:
-                final_output = early_preds[0:1] #F.interpolate(, (H, W), mode='bilinear', align_corners=False).squeeze(0)
+                final_output = early_preds[0:1] #
+
                 continue
 
             final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
             
             # Filter early predictions
             scale_early_predictions = [x for i, x in enumerate(early_preds) if scale_idx[i] == idx]
-
-            n_points = opt.n_points // len(coords)
+            
+            if opt.n_points > 1.0:
+                n_points = opt.n_points // len(coords)
+            else:
+                n_points = int(scale[0] * scale[1] * opt.n_points) // len(coords)
             for coord, early_pred in zip(coords, scale_early_predictions):
                 
                 # Extract the previous prediction
@@ -135,4 +165,15 @@ if __name__ == "__main__":
                 # Add back to the final output
                 final_output[:, :, ymin: ymax, xmin: xmax] = F.interpolate(previous_pred, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
 
-        
+        # Compute IoU for fine prediction
+        coarse_pred = final_output.argmax(1).cpu().numpy()
+        mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+        refined_conf_mat += mat
+
+        description += "Refinement IoU: %.2f" % (get_mean_iou(mat, opt.dataset)*100)
+
+        pbar.set_description(description)
+
+    pbar.write("-------SUMMARY-------")
+    pbar.write("Coarse IoU: %.2f" % (get_mean_iou(conf_mat, opt.dataset)*100))
+    pbar.write("Refinement IoU: %.2f" % (get_mean_iou(refined_conf_mat, opt.dataset)*100))

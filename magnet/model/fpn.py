@@ -25,9 +25,10 @@ def get_rot_mat(theta):
 
 def rot_img(x, theta):
     dtype = x.dtype
-    rot_mat = get_rot_mat(theta)[None, ...].type(dtype).repeat(x.shape[0],1,1)
-    grid = F.affine_grid(rot_mat, x.size()).type(dtype)
-    return F.grid_sample(x, grid)
+    device = x.device
+    rot_mat = get_rot_mat(theta)[None, ...].type(dtype).repeat(x.shape[0],1,1).to(device)
+    grid = F.affine_grid(rot_mat, x.size(), align_corners=False).type(dtype).to(device)
+    return F.grid_sample(x, grid, align_corners=False)
 
 class ResNet(nn.Module):
 
@@ -129,6 +130,8 @@ class ResnetFPN(nn.Module):
         self.pre_rotate = np.array([0, 90, 180, 270]) * np.pi / 180
         self.post_rotate = np.array([0, 270, 180, 90]) * np.pi / 180
 
+        self.test = False
+
     def load_state_dict(self, state_dict):
         state_dict = {k.replace("model.", ""):v for k,v in state_dict.items()}
         super().load_state_dict(state_dict, strict=False)
@@ -159,7 +162,7 @@ class ResnetFPN(nn.Module):
         _, _, H, W = y.size()
         return F.interpolate(x, size=(H, W), **self._up_kwargs) + y
 
-    def forward(self, image):
+    def _forward(self, image):
         _, _, H, W = image.shape
         c2, c3, c4, c5 = self.resnet_backbone(image)
         # Top-down
@@ -195,6 +198,13 @@ class ResnetFPN(nn.Module):
         out = 0
         for a, b in zip(self.pre_rotate, self.post_rotate):
             inp = rot_img(x, a)
-            temp_out = self.forward(inp)
+            temp_out = self._forward(inp)
             out = out + rot_img(temp_out, b)
+            torch.cuda.empty_cache()
+            del inp, temp_out
         return out
+
+    def forward(self, x):
+        if self.test:
+            return self.run_rotation(x)
+        return self._forward(x)

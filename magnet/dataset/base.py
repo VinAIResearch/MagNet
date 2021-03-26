@@ -41,6 +41,13 @@ class BaseDataset(data.Dataset):
             self.patch_transforms = []
             for scale in self.scales:
                 self.patch_transforms += [Patching(scale, self.crop_size, Resize(scale), Resize(self.input_size))]
+        
+        self.image_transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]
+        )
 
     def parse_info(self, line):
         info = {}
@@ -78,7 +85,7 @@ class BaseDataset(data.Dataset):
         label_path = self.data[index]["label"]
         
         # Read image
-        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(cv2.imread(image_path, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
 
         # Read label
         label = cv2.imread(label_path, cv2.IMREAD_COLOR)
@@ -91,7 +98,7 @@ class BaseDataset(data.Dataset):
             # Random scale, crop, resize image and label
             image, label = self.transform(image, label)
             
-            image = transforms.ToTensor()(image)
+            image = self.image_transform(image)
 
             label = self.bgr2class(label)
             label = torch.from_numpy(label).type(torch.LongTensor)
@@ -106,7 +113,7 @@ class BaseDataset(data.Dataset):
         for scale_id, patch_transform in enumerate(self.patch_transforms):
             image_crops = patch_transform(image)
 
-            image_patches += list(map(lambda x: transforms.ToTensor()(x), image_crops))
+            image_patches += list(map(lambda x: self.image_transform(x), image_crops))
             scale_idx += [scale_id for _ in range(len(image_crops))]
         image_patches = torch.stack(image_patches)
         scale_idx = torch.tensor(scale_idx)
