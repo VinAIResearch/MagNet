@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from .base import BatchNorm2d, BN_MOMENTUM, Bottleneck

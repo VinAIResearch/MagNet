@@ -10,7 +10,7 @@ from magnet.options.test import TestOptions
 from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
-from magnet.utils.geometry import get_patch_coords, calculate_uncertainty
+from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
 from magnet.utils.gaussian import GaussianBlur
 
 def get_early_predictions(model, patches, sub_batch_size):
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     # Allocate prediction map
     C, H, W = opt.num_classes, opt.scales[-1][1], opt.scales[-1][0]
-    final_output = torch.zeros((C, H, W), dtype=torch.float).to(device)
+    final_output = None
 
     # Blur function
     gaussian_blur = GaussianBlur(kernel_size=(opt.smooth_kernel, opt.smooth_kernel), sigma=(1.0, 1.0))
@@ -67,22 +67,25 @@ if __name__ == "__main__":
     # Test dataloader
     for idx, data in tqdm(enumerate(dataloader)):
         image_patches = data["image_patches"][0]
-        scale_idx = data["scale_idx"]
+        scale_idx = data["scale_idx"][0]
         label = data["label"]
 
         # Get early predictions at all scales
         image_patches = image_patches.to(device)
         early_preds = get_early_predictions(model, image_patches, sub_batch_size)
-
-        import pdb; pdb.set_trace()
+        
+        del image_patches
+        torch.cuda.empty_cache()
 
         # Refine from coarse-to-fine
         for idx, (coords, scale) in enumerate(zip(patch_coords, opt.scales)):
             
             # Downsample
             if idx == 0:
-                final_output = F.interpolate(early_preds[0], (H, W), mode='bilinear').squeeze(0)
+                final_output = early_preds[0:1] #F.interpolate(, (H, W), mode='bilinear', align_corners=False).squeeze(0)
                 continue
+
+            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
             
             # Filter early predictions
             scale_early_predictions = [x for i, x in enumerate(early_preds) if scale_idx[i] == idx]
@@ -91,13 +94,15 @@ if __name__ == "__main__":
             for coord, early_pred in zip(coords, scale_early_predictions):
                 
                 # Extract the previous prediction
-                xmin, ymin, xmax, ymax = int(coord[0] * W), int(coord[1] * H), int(coord[2] * W), int(coord[3] * H)
-                previous_pred = final_output[:, ymin: ymax, xmin: xmax].unsqueeze(0)
-                previous_pred = F.interpolate(previous_pred, (opt.input_size[1], opt.input_size[1]), mode='bilinear')
+                xmin, ymin, xmax, ymax = int(coord[0] * scale[1]), int(coord[1] * scale[0]), int(coord[2] * scale[1]), int(coord[3] * scale[0])
+                previous_pred = final_output[:, :, ymin: ymax, xmin: xmax]
+                previous_pred = F.interpolate(previous_pred, (opt.input_size[1], opt.input_size[1]), mode='bilinear', align_corners=False)
 
                 # Aggregate with current prediction
-                aggregated_pred = refinement_model(previous_pred, early_pred)
-                aggregated_pred = torch.softmax(aggregated_pred, dim=1)
+                
+                with torch.no_grad():
+                    aggregated_pred = refinement_model(previous_pred, early_pred.unsqueeze(0))
+                    aggregated_pred = torch.softmax(aggregated_pred, dim=1)
 
                 # Select points to refine
                 # Calculate uncertainty of previous prediction
@@ -107,7 +112,7 @@ if __name__ == "__main__":
                 certainty_score = 1.0 - calculate_uncertainty(aggregated_pred)
 
                 # Calculate scores
-                error_score = fine_certainty_score * uncertainty_score
+                error_score = certainty_score * uncertainty_score
 
                 # Smoothing scores
                 error_score = gaussian_blur(error_score)
@@ -118,7 +123,7 @@ if __name__ == "__main__":
                 C = opt.num_classes
                 h, w = previous_pred.shape[2:]
 
-                refined_point_pred = point_sample(aggregated_pred, error_point_coords)
+                refined_point_pred = point_sample(aggregated_pred, error_point_coords, align_corners=False)
                 error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
                 
                 previous_pred = (
@@ -128,6 +133,6 @@ if __name__ == "__main__":
                         )
                 
                 # Add back to the final output
-                previous_pred = F.interpolate(previous_pred, (ymax - ymin, xmax - xmin), mode='bilinear')
-                final_output[:, ymin: ymax, xmin: xmax] = previous_pred[0]
+                final_output[:, :, ymin: ymax, xmin: xmax] = F.interpolate(previous_pred, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
+
         
