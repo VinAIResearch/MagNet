@@ -118,7 +118,7 @@ if __name__ == "__main__":
             scale_early_predictions = [x for i, x in enumerate(early_preds) if scale_idx[i] == idx]
             
             if opt.n_points > 1.0:
-                n_points = opt.n_points // len(coords)
+                n_points = int(opt.n_points) // len(coords)
             else:
                 n_points = int(scale[0] * scale[1] * opt.n_points) // len(coords)
             for coord, early_pred in zip(coords, scale_early_predictions):
