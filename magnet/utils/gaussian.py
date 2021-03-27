@@ -110,14 +110,16 @@ class GaussianBlur(nn.Module):
         >>> output = gauss(input)  # 2x4x5x5
     """
 
-    def __init__(self, kernel_size: Tuple[int, int],
+    def __init__(self, channel: int, kernel_size: Tuple[int, int],
                  sigma: Tuple[float, float]) -> None:
         super(GaussianBlur, self).__init__()
         self.kernel_size: Tuple[int, int] = kernel_size
         self.sigma: Tuple[float, float] = sigma
         self._padding: Tuple[int, int] = self.compute_zero_padding(kernel_size)
-        self.kernel: torch.Tensor = self.create_gaussian_kernel(
-            kernel_size, sigma)
+        kernel: torch.Tensor = self.create_gaussian_kernel(
+            kernel_size, sigma).repeat(channel, 1, 1, 1)
+        self.conv = nn.Conv2d(channel, channel, kernel_size=kernel_size, stride=1, padding=self._padding, groups=channel, bias=False)
+        self.conv.weight.data = kernel
 
     @staticmethod
     def create_gaussian_kernel(kernel_size, sigma) -> torch.Tensor:
@@ -139,13 +141,13 @@ class GaussianBlur(nn.Module):
             raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}"
                              .format(x.shape))
         # prepare kernel
-        b, c, h, w = x.shape
-        tmp_kernel: torch.Tensor = self.kernel.to(x.device).to(x.dtype)
-        kernel: torch.Tensor = tmp_kernel.repeat(c, 1, 1, 1)
+        # b, c, h, w = x.shape
+        # tmp_kernel: torch.Tensor = self.kernel.to(x.device).to(x.dtype)
+        # kernel: torch.Tensor = tmp_kernel.repeat(c, 1, 1, 1)
 
         # convolve tensor with gaussian kernel
-        return conv2d(x, kernel, padding=self._padding, stride=1, groups=c)
-
+        # return conv2d(x, kernel, padding=self._padding, stride=1, groups=c)
+        return self.conv(x)
 
 
 ######################

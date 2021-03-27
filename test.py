@@ -1,4 +1,5 @@
 import math
+import time
 
 from tqdm import tqdm
 
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     final_output = None
 
     # Blur function
-    gaussian_blur = GaussianBlur(kernel_size=(opt.smooth_kernel, opt.smooth_kernel), sigma=(1.0, 1.0))
+    gaussian_blur = GaussianBlur(channel=1, kernel_size=(opt.smooth_kernel, opt.smooth_kernel), sigma=(1.0, 1.0)).to(device)
 
     conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
     refined_conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
@@ -82,6 +83,8 @@ if __name__ == "__main__":
     for idx, data in enumerate(dataloader):
         
         pbar.update(1)
+        execution_time = {}
+        description = ""
 
         image_patches = data["image_patches"][0]
         scale_idx = data["scale_idx"][0]
@@ -89,15 +92,14 @@ if __name__ == "__main__":
 
         # Get early predictions at all scales
         image_patches = image_patches.to(device)
+        start_time = time.time()
         early_preds = get_early_predictions(model, image_patches, sub_batch_size)
+        execution_time["early_preds"] = time.time() - start_time
 
         # Compute IoU for coarse prediction
         coarse_pred = F.interpolate(early_preds[0:1], (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, coarse_pred, opt.num_classes)
         conf_mat += mat
-
-        description = ""
-
         description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
         
         del image_patches
@@ -129,10 +131,12 @@ if __name__ == "__main__":
                 previous_pred = F.interpolate(previous_pred, (opt.input_size[1], opt.input_size[1]), mode='bilinear', align_corners=False)
 
                 # Aggregate with current prediction
-                
+                start_time = time.time()
                 with torch.no_grad():
                     aggregated_pred = refinement_model(previous_pred, early_pred.unsqueeze(0))
                     aggregated_pred = torch.softmax(aggregated_pred, dim=1)
+
+                execution_time["refinement"] = execution_time.get("refinement", 0) + (time.time() - start_time)
 
                 # Select points to refine
                 # Calculate uncertainty of previous prediction
@@ -145,7 +149,10 @@ if __name__ == "__main__":
                 error_score = certainty_score * uncertainty_score
 
                 # Smoothing scores
-                error_score = gaussian_blur(error_score)
+                start_time = time.time()
+                with torch.no_grad():
+                    error_score = gaussian_blur(error_score)
+                execution_time["blur"] = execution_time.get("blur", 0) + (time.time() - start_time)
 
                 # Replace the points in the final output with new prediction
                 error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
@@ -171,7 +178,7 @@ if __name__ == "__main__":
         refined_conf_mat += mat
 
         description += "Refinement IoU: %.2f" % (get_mean_iou(mat, opt.dataset)*100)
-
+        description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items()])
         pbar.set_description(description)
 
     pbar.write("-------SUMMARY-------")
