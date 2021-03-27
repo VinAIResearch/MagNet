@@ -9,27 +9,33 @@ import cv2
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torchvision.ops import roi_align
 
 from magnet.options.test import TestOptions
 from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
-from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
+from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
 from magnet.utils.gaussian import GaussianBlur
 from magnet.utils.metrics import getIoU, confusion_matrix
 
-def get_early_predictions(model, patches, sub_batch_size):
+def get_batch_predictions(model, sub_batch_size, patches, another=None):
 
-    early_preds = []
+    preds = []
     n_patches = patches.shape[0]
     n_batches = math.ceil(n_patches/sub_batch_size)
     for batch_idx in range(n_batches):
         max_index = min((batch_idx + 1) * sub_batch_size, n_patches)
         batch = patches[batch_idx * sub_batch_size: max_index]
         with torch.no_grad():
-            early_preds += [torch.softmax(model(batch), dim=1)]
-    early_preds = torch.cat(early_preds, dim=0)
-    return early_preds
+            if another is None:
+                preds += [torch.softmax(model(batch), dim=1)]
+            else:
+                preds += [torch.softmax(model(batch, another[batch_idx * sub_batch_size: max_index]), dim=1)]
+        torch.cuda.empty_cache()
+    preds = torch.cat(preds, dim=0)
+    
+    return preds
 
 def get_mean_iou(conf_mat, dataset):
     IoU = getIoU(conf_mat)
@@ -90,97 +96,93 @@ if __name__ == "__main__":
         scale_idx = data["scale_idx"][0]
         label = data["label"].numpy()
 
-        # Get early predictions at all scales
-        image_patches = image_patches.to(device)
-        start_time = time.time()
-        early_preds = get_early_predictions(model, image_patches, sub_batch_size)
-        execution_time["early_preds"] = time.time() - start_time
-
-        # Compute IoU for coarse prediction
-        coarse_pred = F.interpolate(early_preds[0:1], (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
-        mat = confusion_matrix(label, coarse_pred, opt.num_classes)
-        conf_mat += mat
-        description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
-        
-        del image_patches
-        torch.cuda.empty_cache()
-
         # Refine from coarse-to-fine
-        for idx, (coords, scale) in enumerate(zip(patch_coords, opt.scales)):
+        for idx, (ratios, scale) in enumerate(zip(patch_coords, opt.scales)):
             
-            # Downsample
+            # If the first scale, get the prediction only
             if idx == 0:
-                final_output = early_preds[0:1] #
+                # Get prediction 
+                final_output = get_batch_predictions(model, 1, image_patches[0:1].to(device))
+
+                # Compute IoU for coarse prediction
+                coarse_pred = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
+                mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+                conf_mat += mat
+                description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
 
                 continue
 
-            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
+            coords = [(x1 * final_output.shape[3], y1 * final_output.shape[2], x2 * final_output.shape[3], y2 * final_output.shape[2]) for x1, y1, x2, y2 in ratios]
+            coords = torch.tensor(coords).to(device)
+
+            # Calculate uncertainty
+            uncertainty = calculate_uncertainty(final_output)
+            patch_uncertainty = roi_align(uncertainty, [coords], output_size=(opt.input_size[1], opt.input_size[0]))
+            patch_uncertainty = patch_uncertainty.mean((1,2,3)).cpu().numpy().tolist()
+
+            # Choose patches with highest mean uncertainty
+            selected_patch_ids = sorted(range(len(patch_uncertainty)), key=lambda k: patch_uncertainty[k])
+            if opt.n_patches != -1:
+                selected_patch_ids = selected_patch_ids[:opt.n_patches]
+
+            # Filter image_patches of this scale
+            scale_image_patches = image_patches[scale_idx == idx]
+
+            # Filter image_patches with selected_patch_ids
+            scale_image_patches = scale_image_patches[selected_patch_ids]
+
+            # Get early predictions
+            scale_early_preds = get_batch_predictions(model, sub_batch_size, scale_image_patches.to(device))
+
+            # Get coarse preds (with coords and final_output)
+            coarse_preds = roi_align(final_output, [coords[selected_patch_ids]], output_size=(opt.input_size[1], opt.input_size[0]))
+
+            # Refinement
+            aggregated_preds = get_batch_predictions(refinement_model, sub_batch_size, coarse_preds, scale_early_preds)
+
+            del coarse_preds, scale_early_preds
+
+            # Make grids
+            fine_pred = ensemble(aggregated_preds, np.array(ratios)[selected_patch_ids], scale)
+
+            # Calculate certainty of fine_pred
+            certainty_score = 1.0 - calculate_uncertainty(fine_pred)
+            certainty_score[certainty_score == 1.0] = 0.0
+            uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode='bilinear', align_corners=False)
+            error_score = certainty_score * uncertainty_score
+
+            # Smoothing error score
+            with torch.no_grad():
+                error_score = gaussian_blur(error_score)
             
-            # Filter early predictions
-            scale_early_predictions = [x for i, x in enumerate(early_preds) if scale_idx[i] == idx]
-            
+            # Get point coordinates
             if opt.n_points > 1.0:
-                n_points = int(opt.n_points) // len(coords)
+                n_points = int(opt.n_points)
             else:
-                n_points = int(scale[0] * scale[1] * opt.n_points) // len(coords)
-            for coord, early_pred in zip(coords, scale_early_predictions):
-                
-                # Extract the previous prediction
-                xmin, ymin, xmax, ymax = int(coord[0] * scale[1]), int(coord[1] * scale[0]), int(coord[2] * scale[1]), int(coord[3] * scale[0])
-                previous_pred = final_output[:, :, ymin: ymax, xmin: xmax]
-                previous_pred = F.interpolate(previous_pred, (opt.input_size[1], opt.input_size[1]), mode='bilinear', align_corners=False)
+                n_points = int(scale[0] * scale[1] * opt.n_points)
 
-                # Aggregate with current prediction
-                start_time = time.time()
-                with torch.no_grad():
-                    aggregated_pred = refinement_model(previous_pred, early_pred.unsqueeze(0))
-                    aggregated_pred = torch.softmax(aggregated_pred, dim=1)
+            error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
+            error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)         
 
-                execution_time["refinement"] = execution_time.get("refinement", 0) + (time.time() - start_time)
-
-                # Select points to refine
-                # Calculate uncertainty of previous prediction
-                uncertainty_score = calculate_uncertainty(previous_pred)
-
-                # Calculate the certainty of aggregated prediction
-                certainty_score = 1.0 - calculate_uncertainty(aggregated_pred)
-
-                # Calculate scores
-                error_score = certainty_score * uncertainty_score
-
-                # Smoothing scores
-                start_time = time.time()
-                with torch.no_grad():
-                    error_score = gaussian_blur(error_score)
-                execution_time["blur"] = execution_time.get("blur", 0) + (time.time() - start_time)
-
-                # Replace the points in the final output with new prediction
-                error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
-
-                C = opt.num_classes
-                h, w = previous_pred.shape[2:]
-
-                refined_point_pred = point_sample(aggregated_pred, error_point_coords, align_corners=False)
-                error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
-                
-                previous_pred = (
-                            previous_pred.reshape(1, C, h * w)
+            # Get refinement prediction 
+            refined_point_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
+            
+            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
+            final_output = (
+                            final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
                             .scatter_(2, error_point_indices, refined_point_pred)
-                            .view(1, C, h, w)
+                            .view(1, opt.num_classes, scale[1], scale[0])
                         )
-                
-                # Add back to the final output
-                final_output[:, :, ymin: ymax, xmin: xmax] = F.interpolate(previous_pred, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
-
+        
         # Compute IoU for fine prediction
-        coarse_pred = final_output.argmax(1).cpu().numpy()
-        mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+        final_output = final_output.argmax(1).cpu().numpy()
+        mat = confusion_matrix(label, final_output, opt.num_classes)
         refined_conf_mat += mat
 
         description += "Refinement IoU: %.2f" % (get_mean_iou(mat, opt.dataset)*100)
         description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items()])
         pbar.set_description(description)
-
+    
     pbar.write("-------SUMMARY-------")
     pbar.write("Coarse IoU: %.2f" % (get_mean_iou(conf_mat, opt.dataset)*100))
     pbar.write("Refinement IoU: %.2f" % (get_mean_iou(refined_conf_mat, opt.dataset)*100))
