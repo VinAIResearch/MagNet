@@ -96,19 +96,24 @@ if __name__ == "__main__":
         scale_idx = data["scale_idx"][0]
         label = data["label"].numpy()
 
+        
         # Refine from coarse-to-fine
         for idx, (ratios, scale) in enumerate(zip(patch_coords, opt.scales)):
             
             # If the first scale, get the prediction only
             if idx == 0:
+                
                 # Get prediction 
+                start_time = time.time()
                 final_output = get_batch_predictions(model, 1, image_patches[0:1].to(device))
+                execution_time["backbone_ff"] = execution_time.get("backbone_ff", 0) + (time.time() - start_time)
 
                 # Compute IoU for coarse prediction
-                coarse_pred = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
-                mat = confusion_matrix(label, coarse_pred, opt.num_classes)
-                conf_mat += mat
-                description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
+                if True:
+                    coarse_pred = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
+                    mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+                    conf_mat += mat
+                    description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
 
                 continue
 
@@ -116,14 +121,21 @@ if __name__ == "__main__":
             coords = torch.tensor(coords).to(device)
 
             # Calculate uncertainty
+            # start_time = time.time()
             uncertainty = calculate_uncertainty(final_output)
             patch_uncertainty = roi_align(uncertainty, [coords], output_size=(opt.input_size[1], opt.input_size[0]))
-            patch_uncertainty = patch_uncertainty.mean((1,2,3)).cpu().numpy().tolist()
+            # start_time = time.time()
+            patch_uncertainty = patch_uncertainty.mean((1,2,3))#.cpu().numpy().tolist()
+            # execution_time["cal_uncertainty"] = execution_time.get("cal_uncertainty", 0) + (time.time() - start_time)
 
             # Choose patches with highest mean uncertainty
-            selected_patch_ids = sorted(range(len(patch_uncertainty)), key=lambda k: patch_uncertainty[k])
+            # start_time = time.time()
+            # selected_patch_ids = sorted(range(len(patch_uncertainty)), key=lambda k: patch_uncertainty[k])
+            _, selected_patch_ids = torch.sort(patch_uncertainty)
+            # import pdb; pdb.set_trace()
             if opt.n_patches != -1:
                 selected_patch_ids = selected_patch_ids[:opt.n_patches]
+            # execution_time["choose_patch"] = execution_time.get("choose_patch", 0) + (time.time() - start_time)
 
             # Filter image_patches of this scale
             scale_image_patches = image_patches[scale_idx == idx]
@@ -132,40 +144,53 @@ if __name__ == "__main__":
             scale_image_patches = scale_image_patches[selected_patch_ids]
 
             # Get early predictions
+            start_time = time.time()
             scale_early_preds = get_batch_predictions(model, sub_batch_size, scale_image_patches.to(device))
+            execution_time["backbone_ff"] = execution_time.get("backbone_ff", 0) + (time.time() - start_time)
 
             # Get coarse preds (with coords and final_output)
+            # start_time = time.time()
             coarse_preds = roi_align(final_output, [coords[selected_patch_ids]], output_size=(opt.input_size[1], opt.input_size[0]))
+            # execution_time["extract_coarse"] = execution_time.get("extract_coarse", 0) + (time.time() - start_time)
 
             # Refinement
+            start_time = time.time()
             aggregated_preds = get_batch_predictions(refinement_model, sub_batch_size, coarse_preds, scale_early_preds)
+            execution_time["refinement_ff"] = execution_time.get("refinement_ff", 0) + (time.time() - start_time)
 
             del coarse_preds, scale_early_preds
 
             # Make grids
-            fine_pred = ensemble(aggregated_preds, np.array(ratios)[selected_patch_ids], scale)
+            # import pdb; pdb.set_trace()
+            fine_pred = ensemble(aggregated_preds, ratios[selected_patch_ids], scale)
 
             # Calculate certainty of fine_pred
+            # start_time = time.time()
             certainty_score = 1.0 - calculate_uncertainty(fine_pred)
-            certainty_score[certainty_score == 1.0] = 0.0
             uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode='bilinear', align_corners=False)
             error_score = certainty_score * uncertainty_score
+            # execution_time["cal_certainty"] = execution_time.get("cal_certainty", 0) + (time.time() - start_time)
+            
 
             # Smoothing error score
             with torch.no_grad():
                 error_score = gaussian_blur(error_score)
             
             # Get point coordinates
+           
             if opt.n_points > 1.0:
                 n_points = int(opt.n_points)
             else:
                 n_points = int(scale[0] * scale[1] * opt.n_points)
-
+            # start_time = time.time()
             error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
-            error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)         
+            # execution_time["get_point"] = execution_time.get("get_point", 0) + (time.time() - start_time)
+            error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)  
 
             # Get refinement prediction 
+            # start_time = time.time()
             refined_point_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
+            # execution_time["sample_point"] = execution_time.get("sample_point", 0) + (time.time() - start_time)    
             
             final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
             final_output = (
@@ -173,7 +198,6 @@ if __name__ == "__main__":
                             .scatter_(2, error_point_indices, refined_point_pred)
                             .view(1, opt.num_classes, scale[1], scale[0])
                         )
-        
         # Compute IoU for fine prediction
         final_output = final_output.argmax(1).cpu().numpy()
         mat = confusion_matrix(label, final_output, opt.num_classes)
