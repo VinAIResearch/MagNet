@@ -226,21 +226,22 @@ def median_blur(input: torch.Tensor,
         raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}"
                          .format(input.shape))
 
-   
+    padding: Tuple[int, int] = _compute_zero_padding(kernel_size)
 
     # prepare kernel
     kernel: torch.Tensor = get_binary_kernel2d(kernel_size).to(input)
     b, c, h, w = input.shape
 
     # map the local window to single vector
-    features: torch.Tensor = F.conv2d(
-        input.reshape(b * c, 1, h, w), kernel, padding=padding, stride=1)
-    features = features.view(b, c, -1, h, w)  # BxCx(K_h * K_w)xHxW
+    with torch.no_grad():
+        input = F.conv2d(
+            input.reshape(b * c, 1, h, w).detach(), kernel, padding=padding, stride=1)
+        input = input.view(b, c, -1, h, w)  # BxCx(K_h * K_w)xHxW
+        
+        # compute the median along the feature axis
+        input = torch.median(input, dim=2)[0]
 
-    # compute the median along the feature axis
-    median: torch.Tensor = torch.median(features, dim=2)[0]
-
-    return median
+    return input
 
 
 

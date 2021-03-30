@@ -17,7 +17,7 @@ from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
 from magnet.utils.blur import GaussianBlur, MedianBlur
-from magnet.utils.metrics import getIoU, confusion_matrix
+from magnet.utils.metrics import getIoU, confusion_matrix, getFreq
 
 @torch.no_grad()
 def get_batch_predictions(model, sub_batch_size, patches, another=None):
@@ -33,7 +33,7 @@ def get_batch_predictions(model, sub_batch_size, patches, another=None):
                 preds += [torch.softmax(model(batch), dim=1)]
             else:
                 preds += [torch.softmax(model(batch, another[batch_idx * sub_batch_size: max_index]), dim=1)]
-        free_mem(True)
+        free_mem(False)
     preds = torch.cat(preds, dim=0)
     return preds
 
@@ -42,9 +42,20 @@ def get_mean_iou(conf_mat, dataset):
     if dataset == "deepglobe":
         return np.nanmean(IoU[1:])
 
+def get_freq_iou(conf_mat, dataset):
+    IoU = getIoU(conf_mat)
+    freq = getFreq(conf_mat)
+    if dataset == "deepglobe":
+        return (IoU[1:] * freq[1:]).sum()
+
 def free_mem(clear_cache=False):
-    if clear_cache:
+    if False:
         torch.cuda.empty_cache()
+
+def get_peak_mem():
+    stats = torch.cuda.memory_stats()
+    peak_bytes_requirement = stats["allocated_bytes.all.peak"]
+    return peak_bytes_requirement / 1024 ** 3
 
 @torch.no_grad()
 def main():
@@ -71,8 +82,8 @@ def main():
     _ = model.eval()
 
     # Load pretrained weights for refinement module
-    # state_dict = torch.load(opt.pretrained_refinement)
-    # refinement_model.load_state_dict(state_dict, strict=False)
+    state_dict = torch.load(opt.pretrained_refinement)
+    refinement_model.load_state_dict(state_dict, strict=False)
     _ = refinement_model.eval()
 
     # Patch coords
@@ -124,8 +135,6 @@ def main():
                 coarse_pred = final_output.clone()
                 continue
 
-            # coords = [(x1 * final_output.shape[3], y1 * final_output.shape[2], x2 * final_output.shape[3], y2 * final_output.shape[2]) for x1, y1, x2, y2 in ratios]
-            # coords = torch.tensor(coords).to(device)
             coords = ratios.clone()
             coords[:, 0] = coords[:, 0] * final_output.shape[3]
             coords[:, 1] = coords[:, 1] * final_output.shape[2]
@@ -198,8 +207,11 @@ def main():
             # with torch.no_grad():
             #     error_score = gaussian_blur(error_score)
             start_time = time.time()
-            # with torch.no_grad():
-            #     error_score = median_blur(error_score)
+            _, _, h_e, w_e = error_score.shape
+            error_score = F.interpolate(error_score, size=(opt.input_size[1], opt.input_size[0]))
+            with torch.no_grad():
+                error_score = median_blur(error_score)
+            error_score = F.interpolate(error_score, size=(h_e, w_e))
             execution_time["blur"] = execution_time.get("blur", 0) + (time.time() - start_time)
             
             # Get point coordinates
@@ -239,17 +251,24 @@ def main():
         coarse_pred = F.interpolate(coarse_pred, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, coarse_pred, opt.num_classes)
         conf_mat += mat
-        # description += "Coarse IoU: %.2f, " % (get_mean_iou(mat, opt.dataset)*100)
+        description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset)*100)
+
+        # cv2.imwrite("test_coarse.png", dataset.class2bgr(coarse_pred[0]))
 
         # Compute IoU for fine prediction
         final_output = final_output.argmax(1).cpu().numpy()
         mat = confusion_matrix(label, final_output, opt.num_classes)
         refined_conf_mat += mat
+        description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset)*100)
 
-        # description += "Refinement IoU: %.2f" % (get_mean_iou(mat, opt.dataset)*100)
+        # cv2.imwrite("test_fine.png", dataset.class2bgr(final_output[0]))
+        # cv2.imwrite("test_gt.png", dataset.class2bgr(label[0]))
         
         description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items() if v > 0.01])
         pbar.set_description(description)
+
+    
+    import pdb; pdb.set_trace()
     
     pbar.write("-------SUMMARY-------")
     pbar.write("Coarse IoU: %.2f" % (get_mean_iou(conf_mat, opt.dataset)*100))

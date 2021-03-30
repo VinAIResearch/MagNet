@@ -60,7 +60,7 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
     
     uncertainty_map = uncertainty_map.view(R, H * W)
     
-    if num_points < 32000:
+    if num_points < 8192:
         point_indices = torch.topk(uncertainty_map, k=num_points, dim=1)[1]
     else:
         point_indices = uncertainty_map.argsort(1,descending=True)[:, :num_points]

@@ -8,7 +8,14 @@ def confusion_matrix(x, y, n, ignore_label=None, mask=None):
 
 def getIoU(conf_matrix):
     if conf_matrix.sum() == 0:
-        return 0, 0, 0, 0, 0
+        return 0
     with np.errstate(divide='ignore',invalid='ignore'):
-        IU = np.diag(conf_matrix) / (conf_matrix.sum(1) + conf_matrix.sum(0) - np.diag(conf_matrix)).astype(np.float)
+        IU = np.nan_to_num(np.diag(conf_matrix) / (conf_matrix.sum(1) + conf_matrix.sum(0) - np.diag(conf_matrix)).astype(np.float))
     return IU
+
+def getFreq(conf_matrix):
+    if conf_matrix.sum() == 0:
+        return 0
+    with np.errstate(divide='ignore',invalid='ignore'):
+        freq = conf_matrix.sum(axis=1) / conf_matrix.sum()
+    return freq
