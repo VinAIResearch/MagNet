@@ -19,3 +19,14 @@ def getFreq(conf_matrix):
     with np.errstate(divide='ignore',invalid='ignore'):
         freq = conf_matrix.sum(axis=1) / conf_matrix.sum()
     return freq
+
+def get_mean_iou(conf_mat, dataset):
+    IoU = getIoU(conf_mat)
+    if dataset == "deepglobe":
+        return np.nanmean(IoU[1:])
+
+def get_freq_iou(conf_mat, dataset):
+    IoU = getIoU(conf_mat)
+    freq = getFreq(conf_mat)
+    if dataset == "deepglobe":
+        return (IoU[1:] * freq[1:]).sum()

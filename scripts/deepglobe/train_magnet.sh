@@ -1,0 +1,13 @@
+python train.py --dataset deepglobe \
+--root data/deepglobe \
+--datalist data/list/deepglobe/train.txt \
+--scales 612-612,1224-1224,2448-2448 \
+--crop_size 612 612 \
+--input_size 508 508 \
+--num_workers 8 \
+--model fpn \
+--pretrained checkpoints/deepglobe_fpn.pth \
+--num_classes 7 \
+--batch_size 3 \
+--task_name deepglobe_refinement \
+--lr 0.001 \

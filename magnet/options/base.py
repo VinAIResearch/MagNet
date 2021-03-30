@@ -17,8 +17,8 @@ class BaseOptions():
         # Model config
         parser.add_argument('--model', required=True, type=str, help='model name: fpn')
         parser.add_argument('--num_classes', required=True, type=int, help='number of classes')
-        parser.add_argument('--pretrained', type=str, help='pretrained weight')
-        parser.add_argument('--pretrained_refinement', type=str, help='pretrained refinement module')
+        parser.add_argument('--pretrained', required=True, type=str, help='pretrained weight')
+        parser.add_argument('--pretrained_refinement', type=str, default="", help='pretrained refinement module')
         self.parser = parser
 
     def parse(self):

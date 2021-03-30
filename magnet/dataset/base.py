@@ -7,7 +7,7 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 
-from magnet.utils.transform import SegCompose, OneOf, Resize, RandomCrop, Patching
+from magnet.utils.transform import SegCompose, OneOf, Resize, RandomCrop, RandomFlip, Patching, RandomPair
 
 class BaseDataset(data.Dataset):
     def __init__(self, opt):
@@ -32,10 +32,12 @@ class BaseDataset(data.Dataset):
         # Transformation
         # For training
         if self.phase == "train":
-            transform_list = []
-            for scale in self.scales:
-                transform_list += [SegCompose([Resize(scale), RandomCrop(self.crop_size), Resize(self.input_size)])]
-            self.transform = OneOf(transform_list)
+            # transform_list = []
+            # for scale in self.scales[1:]:
+            #     transform_list += [SegCompose([Resize(scale), RandomCrop(self.crop_size), RandomFlip(), Resize(self.input_size)])]
+            # self.coarse_transform = Resize(self.input_size)
+            # self.transform = OneOf(transform_list)
+            self.transform = RandomPair(self.scales[1:], self.crop_size, self.input_size)
         else:
             # For testing
             self.patch_transforms = []
@@ -96,14 +98,15 @@ class BaseDataset(data.Dataset):
         # Cropping
         if self.phase == "train":
             # Random scale, crop, resize image and label
-            image, label = self.transform(image, label)
+            coarse_image, _, fine_image, fine_label, info = self.transform(image, label)
             
-            image = self.image_transform(image)
+            coarse_image = self.image_transform(coarse_image)
+            fine_image = self.image_transform(fine_image)
 
-            label = self.bgr2class(label)
-            label = torch.from_numpy(label).type(torch.LongTensor)
+            fine_label = self.bgr2class(fine_label)
+            fine_label = torch.from_numpy(fine_label).type(torch.LongTensor)
 
-            return {"image": image, "label": label}
+            return {"coarse_image": coarse_image,  "fine_image": fine_image, "fine_label": fine_label, "coord": torch.tensor(info).unsqueeze(0)}
 
         # Cropping with scales
         image_patches = []

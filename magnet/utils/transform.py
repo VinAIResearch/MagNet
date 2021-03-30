@@ -115,3 +115,41 @@ class RandomFlip(object):
             image = cv2.flip(image, 1)
             label = cv2.flip(label, 1)
         return image, label
+
+class RandomPair(object):
+    def __init__(self, scales, crop_size, input_size):
+        super().__init__()
+        self.scales = [Resize(scale) for scale in scales]
+        self.crop_size = crop_size
+        self.resize = Resize(input_size)
+    
+    def __call__(self, image, label):
+
+        # Resize to get coarse scale
+        coarse_image, coarse_label = self.resize(image, label)
+
+        # Pick random scale
+        fine_image, fine_label = random.choice(self.scales)(image, label)
+
+        # Random crop
+        max_x = fine_image.shape[1] - self.crop_size[0]
+        max_y = fine_image.shape[0] - self.crop_size[1]
+        
+        x = np.random.randint(0, max_x)
+        y = np.random.randint(0, max_y)
+
+        xmin = x * 1.0 / fine_image.shape[1] * coarse_image.shape[1]
+        ymin = y * 1.0 / fine_image.shape[0] * coarse_image.shape[0]
+        xmax = xmin + (self.crop_size[0] * 1.0 / fine_image.shape[1] * coarse_image.shape[1])
+        ymax = ymin + (self.crop_size[1] * 1.0 / fine_image.shape[0] * coarse_image.shape[0])
+        # import pdb; pdb.set_trace()
+
+        fine_image = fine_image[y: y + self.crop_size[1], x: x + self.crop_size[0]]
+        fine_label = fine_label[y: y + self.crop_size[1], x: x + self.crop_size[0]]
+        
+        info = (xmin, ymin, xmax, ymax)
+
+        # Resize fine image
+        fine_image, fine_label = self.resize(fine_image, fine_label)
+
+        return coarse_image, coarse_label, fine_image, fine_label, info
