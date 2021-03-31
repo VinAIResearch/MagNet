@@ -47,7 +47,7 @@ def main():
     model.eval()
 
     # Create refinement module
-    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
+    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True, use_image=True).to(device)
     if os.path.isfile(opt.pretrained_refinement):
         print("Load refinement weight from", opt.pretrained_refinement)
         state_dict = torch.load(opt.pretrained_refinement)
@@ -71,7 +71,6 @@ def main():
         pbar = tqdm(total=len(dataloader))
 
         epoch_mat_coarse = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
-        epoch_mat_fine = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
         epoch_mat_aggre = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
         mean_loss = []
 
@@ -83,8 +82,7 @@ def main():
 
             # Get early predictions
             with torch.no_grad():
-                coarse_pred = model(coarse_image)
-                fine_pred = model(fine_image)
+                coarse_pred = model(coarse_image).softmax(1)
 
             # Crop preds
             # import pdb; pdb.set_trace()
@@ -92,7 +90,7 @@ def main():
 
             # Refinement forward
             optimizer.zero_grad()
-            logits = refinement_model(crop_preds, fine_pred)
+            logits = refinement_model(crop_preds, fine_image)
 
             # Calculate loss
             loss = criteria(logits, fine_label)
@@ -108,21 +106,16 @@ def main():
             fine_label = fine_label.cpu().numpy()
             coarse_mat = confusion_matrix(fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes)
             epoch_mat_coarse += coarse_mat
-            fine_mat = confusion_matrix(fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes)
-            epoch_mat_fine += fine_mat
             aggre_mat = confusion_matrix(fine_label, logits.argmax(1).cpu().numpy(), opt.num_classes)
             epoch_mat_aggre += aggre_mat
 
             IoU_coarse = get_freq_iou(coarse_mat, opt.dataset)
             description += "IoU coarse: %.2f, " %(IoU_coarse * 100)
-
-            IoU_fine = get_freq_iou(fine_mat, opt.dataset)
-            description += "IoU fine: %.2f, " %(IoU_fine* 100)
             
             IoU_aggre = get_freq_iou(aggre_mat, opt.dataset)
             description += "IoU aggre: %.2f" %(IoU_aggre* 100)
 
-            writer.add_scalars("step_IoU", {"coarse": IoU_coarse, "fine": IoU_fine, "aggre": IoU_aggre}, global_step)
+            writer.add_scalars("step_IoU", {"coarse": IoU_coarse, "aggre": IoU_aggre}, global_step)
             
             description = "Epoch {}/{}: ".format(epoch+1, opt.epochs) + description
 
@@ -137,7 +130,6 @@ def main():
         writer.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step=epoch+1)
         writer.add_scalars("epoch_IoU", {
             "coarse": get_mean_iou(epoch_mat_coarse, opt.dataset),
-            "fine": get_mean_iou(epoch_mat_fine, opt.dataset),
             "aggre": get_mean_iou(epoch_mat_aggre, opt.dataset)
         }, 
         global_step=epoch + 1)

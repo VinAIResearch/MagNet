@@ -9,5 +9,5 @@ python train.py --dataset deepglobe \
 --pretrained checkpoints/deepglobe_fpn.pth \
 --num_classes 7 \
 --batch_size 3 \
---task_name deepglobe_refinement \
+--task_name deepglobe_refinement_logits \
 --lr 0.001 \
