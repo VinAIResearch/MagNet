@@ -14,7 +14,7 @@ from torchvision.ops import roi_align
 from magnet.options.test import TestOptions
 from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
-from magnet.model.refinement import RefinementMagNet
+from magnet.model.refinement import RefinementMagNet, LightRefinementMagNet
 from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
 from magnet.utils.blur import GaussianBlur, MedianBlur
 from magnet.utils.metrics import get_mean_iou, confusion_matrix, get_freq_iou
@@ -63,7 +63,7 @@ def main():
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
     model.multi_test = opt.multi_test
-    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
+    refinement_model = LightRefinementMagNet(opt.num_classes, use_bn=True).to(device)
     
     # Load pretrained weights for backbone
     state_dict = torch.load(opt.pretrained)
@@ -242,7 +242,7 @@ def main():
         conf_mat += mat
         description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset)*100)
 
-        cv2.imwrite("test_coarse.png", dataset.class2bgr(coarse_pred[0]))
+        # cv2.imwrite("test_coarse.png", dataset.class2bgr(coarse_pred[0]))
 
         # Compute IoU for fine prediction
         final_output = final_output.argmax(1).cpu().numpy()
@@ -250,13 +250,13 @@ def main():
         refined_conf_mat += mat
         description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset)*100)
 
-        cv2.imwrite("test_fine.png", dataset.class2bgr(final_output[0]))
-        cv2.imwrite("test_gt.png", dataset.class2bgr(label[0]))
+        # cv2.imwrite("test_fine.png", dataset.class2bgr(final_output[0]))
+        # cv2.imwrite("test_gt.png", dataset.class2bgr(label[0]))
         
         description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items() if v > 0.01])
         pbar.set_description(description)
 
-    
+        # import pdb; pdb.set_trace()
     pbar.write("-------SUMMARY-------")
     pbar.write("Coarse IoU: %.2f" % (get_mean_iou(conf_mat, opt.dataset)*100))
     pbar.write("Refinement IoU: %.2f" % (get_mean_iou(refined_conf_mat, opt.dataset)*100))
