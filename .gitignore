@@ -144,4 +144,5 @@ cython_debug/
 checkpoints/*.pth
 data/deepglobe
 runs/
+test_results/
 *.png

@@ -6,6 +6,9 @@ import cv2
 
 from PIL import Image
 
+import torch
+import torchvision.transforms as TF
+
 class SegCompose(object):
     def __init__(self, augmenters):
         super().__init__()
@@ -157,3 +160,18 @@ class RandomPair(object):
         fine_image, fine_label = self.resize(fine_image, fine_label)
 
         return coarse_image, coarse_label, fine_image, fine_label, info
+
+class NormalizeInverse(TF.Normalize):
+    """
+    Undoes the normalization and returns the reconstructed images in the input domain.
+    """
+
+    def __init__(self, mean, std):
+        mean = torch.as_tensor(mean)
+        std = torch.as_tensor(std)
+        std_inv = 1 / (std + 1e-7)
+        mean_inv = -mean * std_inv
+        super().__init__(mean=mean_inv, std=std_inv)
+
+    def __call__(self, tensor):
+        return super().__call__(tensor.clone())
