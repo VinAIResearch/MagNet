@@ -6,9 +6,6 @@ import time
 
 def get_patch_coords(size, input_size):
     coords = []
-    # x,y = 0, 0
-    # w_ratio = input_size[0]/ size[0]
-    # h_ratio = input_size[1]/ size[1]
 
     n_x = math.ceil(size[0] / input_size[0])
     step_x = int(input_size[0] - (n_x * input_size[0] - size[0]) / max(n_x - 1, 1.0))
@@ -19,11 +16,6 @@ def get_patch_coords(size, input_size):
         for y in range(n_y):
             coords += [(x * step_x/size[0], y * step_y/size[1], (x * step_x + input_size[0])/size[0],  (y * step_y + input_size[1])/size[1])]
 
-    # for i in range(int(1.0/w_ratio)):
-    #     for j in range(int(1.0/h_ratio)):
-    #         x = i * w_ratio
-    #         y = j * h_ratio
-    #         coords += [[x, y, x + w_ratio, y + h_ratio]]
     return coords
 
 def ensemble(patches, coords, output_size):

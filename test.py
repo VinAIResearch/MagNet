@@ -235,9 +235,6 @@ def main():
             save_image[:, w*3+30:] = cv2.resize(fine_pred, (h, w))
             os.makedirs(opt.save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(opt.save_dir, data["name"][0]), save_image)
-        # cv2.imwrite("test_coarse.png", dataset.class2bgr(coarse_pred[0]))
-        # cv2.imwrite("test_fine.png", dataset.class2bgr(final_output[0]))
-        # cv2.imwrite("test_gt.png", dataset.class2bgr(label[0]))
         
         description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items() if v > 0.01])
         pbar.set_description(description)
