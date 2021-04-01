@@ -10,7 +10,10 @@ def getIoU(conf_matrix):
     if conf_matrix.sum() == 0:
         return 0
     with np.errstate(divide='ignore',invalid='ignore'):
-        IU = np.nan_to_num(np.diag(conf_matrix) / (conf_matrix.sum(1) + conf_matrix.sum(0) - np.diag(conf_matrix)).astype(np.float))
+        union = np.maximum(1.0, conf_matrix.sum(axis=1) + conf_matrix.sum(axis=0) - np.diag(conf_matrix))
+        intersect = np.diag(conf_matrix)
+        IU = intersect / union
+        # IU = np.nan_to_num(np.diag(conf_matrix) / (conf_matrix.sum(1) + conf_matrix.sum(0) - np.diag(conf_matrix)).astype(np.float))
     return IU
 
 def getFreq(conf_matrix):

@@ -1,4 +1,5 @@
 import random
+import math
 
 import numpy as np
 import cv2
@@ -45,11 +46,14 @@ class Patching(object):
     def __init__(self, scale, crop, pre_augmenter=None, post_augmenter=None):
         super().__init__()
         crops = []
-        n_x = scale[0] // crop[0]
-        n_y = scale[1] // crop[1]
+        n_x = math.ceil(scale[0] / crop[0])
+        step_x = int(crop[0] - (n_x * crop[0] - scale[0]) / max(n_x - 1, 1.0))
+        n_y = math.ceil(scale[1] / crop[1])
+        step_y = int(crop[1] - (n_y * crop[1] - scale[1]) / max(n_y - 1, 1.0))
+
         for x in range(n_x):
             for y in range(n_y):
-                crops += [(x * crop[0], y * crop[1], (x + 1) * crop[0],  (y + 1) * crop[1])]
+                crops += [(x * step_x, y * step_y, x * step_x + crop[0],  y * step_y + crop[1])]
         self.crops = crops
         self.pre_augmenter = pre_augmenter
         self.post_augmenter = post_augmenter

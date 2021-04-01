@@ -63,7 +63,7 @@ def main():
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
     model.multi_test = opt.multi_test
-    refinement_model = LightRefinementMagNet(opt.num_classes, use_bn=True).to(device)
+    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
     
     # Load pretrained weights for backbone
     state_dict = torch.load(opt.pretrained)
@@ -147,10 +147,11 @@ def main():
             if opt.n_patches != -1:
                 selected_patch_ids = selected_patch_ids[:opt.n_patches]
             execution_time["choose_patch"] = execution_time.get("choose_patch", 0) + (time.time() - start_time)
+            # import pdb; pdb.set_trace()
 
             # Filter image_patches of this scale
             scale_image_patches = image_patches[scale_idx == idx]
-
+            
             # Filter image_patches with selected_patch_ids
             scale_image_patches = scale_image_patches[selected_patch_ids]
 
@@ -179,12 +180,16 @@ def main():
             selected_ratios = ratios[selected_patch_ids]
             execution_time["make_grid"] = execution_time.get("make_grid", 0) + (time.time() - start_time)
             
-            fine_pred = ensemble(fine_pred, selected_ratios, scale)
+            fine_pred, mask = ensemble(fine_pred, selected_ratios, scale)
             free_mem()
 
             # Calculate certainty of fine_pred
             start_time = time.time()
             certainty_score = 1.0 - calculate_uncertainty(fine_pred)
+            
+            if opt.n_patches > 0:
+                certainty_score[:,:,mask] = 0.0
+            
             uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode='bilinear', align_corners=False)
             error_score = certainty_score * uncertainty_score
             del certainty_score, uncertainty_score
@@ -204,11 +209,10 @@ def main():
             execution_time["blur"] = execution_time.get("blur", 0) + (time.time() - start_time)
             
             # Get point coordinates
-           
             if opt.n_points > 1.0:
-                n_points = int(opt.n_points)
+                n_points = min(int(opt.n_points), scale[0] * scale[1] * len(selected_patch_ids) /len(coords))
             else:
-                n_points = int(scale[0] * scale[1] * opt.n_points)
+                n_points = int(scale[0] * scale[1] * opt.n_points * len(selected_patch_ids) /len(coords))
             
             start_time = time.time()
             error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
@@ -221,12 +225,20 @@ def main():
             # Get refinement prediction 
             start_time = time.time()
             fine_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
+            
+            if opt.n_patches > 0:
+                sample_mask = point_sample(mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False).type(torch.bool).squeeze()
+
             free_mem()
             execution_time["sample_point"] = execution_time.get("sample_point", 0) + (time.time() - start_time)    
             
             final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
             free_mem()
 
+            if opt.n_patches > 0:
+                error_point_indices = error_point_indices[:, :, sample_mask]
+                fine_pred = fine_pred[:, :, sample_mask]
+                
             final_output = (
                             final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
                             .scatter_(2, error_point_indices, fine_pred)

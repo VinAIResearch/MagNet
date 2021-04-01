@@ -1,36 +1,50 @@
+import math
+
 import torch
 import torch.nn.functional as F
 import time
 
 def get_patch_coords(size, input_size):
     coords = []
-    x,y = 0, 0
-    w_ratio = input_size[0]/ size[0]
-    h_ratio = input_size[1]/ size[1]
-    for i in range(int(1.0/w_ratio)):
-        for j in range(int(1.0/h_ratio)):
-            x = i * w_ratio
-            y = j * h_ratio
-            coords += [[x, y, x + w_ratio, y + h_ratio]]
+    # x,y = 0, 0
+    # w_ratio = input_size[0]/ size[0]
+    # h_ratio = input_size[1]/ size[1]
+
+    n_x = math.ceil(size[0] / input_size[0])
+    step_x = int(input_size[0] - (n_x * input_size[0] - size[0]) / max(n_x - 1, 1.0))
+    n_y = math.ceil(size[1] / input_size[1])
+    step_y = int(input_size[1] - (n_y * input_size[1] - size[1]) / max(n_y - 1, 1.0))
+
+    for x in range(n_x):
+        for y in range(n_y):
+            coords += [(x * step_x/size[0], y * step_y/size[1], (x * step_x + input_size[0])/size[0],  (y * step_y + input_size[1])/size[1])]
+
+    # for i in range(int(1.0/w_ratio)):
+    #     for j in range(int(1.0/h_ratio)):
+    #         x = i * w_ratio
+    #         y = j * h_ratio
+    #         coords += [[x, y, x + w_ratio, y + h_ratio]]
     return coords
 
 def ensemble(patches, coords, output_size):
     _, C, _, _ = patches.shape
 
     output = torch.zeros((1, C, output_size[1], output_size[0]), device=patches.device, dtype=patches.dtype)
-    output[:,1] = 1.0
+    mask = torch.zeros((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
     if len(coords.shape) == 1:
         coords = [coords]
     
-    
-    xmin, ymin, xmax, ymax = int(coords[0][0] * output_size[1]), int(coords[0][1] * output_size[0]), int(coords[0][2] * output_size[1]), int(coords[0][3] * output_size[0])
+    xmin, ymin, xmax, ymax = int((coords[0][0] * output_size[1]).round()), int((coords[0][1] * output_size[0]).round()), int((coords[0][2] * output_size[1]).round()), int((coords[0][3] * output_size[0]).round())
     patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
     
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
-        xmin, ymin, xmax, ymax = int(xmin * output_size[1]), int(ymin * output_size[0]), int(xmax * output_size[1]), int(ymax * output_size[0])
+        xmin, ymin, xmax, ymax = int((xmin * output_size[1]).round()), int((ymin * output_size[0]).round()), int((xmax * output_size[1]).round()), int((ymax * output_size[0]).round())
+        
         output[:, :, ymin:ymax, xmin:xmax] = patch
-
-    return output
+        mask[ymin:ymax, xmin:xmax] += 1.0
+    output = output/ mask.unsqueeze(0).unsqueeze(0)
+    mask = mask.type(torch.bool)
+    return output, mask
 
 def calculate_uncertainty(seg_probs):
     top2_scores = torch.topk(seg_probs, k=2, dim=1)[0]
@@ -60,13 +74,12 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
     
     uncertainty_map = uncertainty_map.view(R, H * W)
     
-    if num_points < 32000:
-        point_indices = torch.topk(uncertainty_map, k=num_points, dim=1)[1]
+    if num_points == H * W:
+        point_indices = torch.arange(start=0, end=H*W, device=uncertainty_map.device).view(1, -1).repeat(R, 1)
     else:
-        point_indices = uncertainty_map.argsort(1,descending=True)[:, :num_points]
+        point_indices = torch.topk(uncertainty_map, k=num_points, dim=1, sorted=False)[1]
 
     point_coords = torch.zeros(R, num_points, 2, dtype=torch.float, device=uncertainty_map.device)
-    
 
     point_coords[:, :, 0] = w_step / 2.0 + (point_indices % W).to(torch.float) * w_step
     point_coords[:, :, 1] = h_step / 2.0 + (point_indices // W).to(torch.float) * h_step
@@ -75,11 +88,7 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
     sorted_values = torch.sqrt(point_coords[:, :, 0] ** 2 + point_coords[:, :, 1] ** 2)
     indices = torch.argsort(sorted_values, 1)
     
-
     for i in range(R):
-        # idx = list(indices[i].cpu().numpy())
-        # point_coords[i] = point_coords[i,idx]
-        # point_indices[i] = point_indices[i, idx]
         
         point_coords[i] = point_coords[i].gather(0, torch.stack([indices[i], indices[i]],dim=1))
         point_indices[i] = point_indices[i].gather(0, indices[i])

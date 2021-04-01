@@ -32,11 +32,6 @@ class BaseDataset(data.Dataset):
         # Transformation
         # For training
         if self.phase == "train":
-            # transform_list = []
-            # for scale in self.scales[1:]:
-            #     transform_list += [SegCompose([Resize(scale), RandomCrop(self.crop_size), RandomFlip(), Resize(self.input_size)])]
-            # self.coarse_transform = Resize(self.input_size)
-            # self.transform = OneOf(transform_list)
             self.transform = RandomPair(self.scales[1:], self.crop_size, self.input_size)
         else:
             # For testing

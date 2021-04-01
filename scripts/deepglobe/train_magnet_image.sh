@@ -1,4 +1,4 @@
-python train.py --dataset deepglobe \
+python train_image.py --dataset deepglobe \
 --root data/deepglobe \
 --datalist data/list/deepglobe/train.txt \
 --scales 612-612,1224-1224,2448-2448 \
@@ -8,6 +8,6 @@ python train.py --dataset deepglobe \
 --model fpn \
 --pretrained checkpoints/deepglobe_fpn.pth \
 --num_classes 7 \
---batch_size 2 \
---task_name deepglobe_refinement_logits \
+--batch_size 3 \
+--task_name deepglobe_refinement_image \
 --lr 0.001
