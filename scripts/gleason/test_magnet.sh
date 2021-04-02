@@ -1,0 +1,17 @@
+python test.py --dataset gleason \
+--root data/gleason \
+--datalist data/list/gleason/val.txt \
+--scales 625-625,1250-1250,2500-2500,5000-5000 \
+--crop_size 625 625 \
+--input_size 512 512 \
+--num_workers 4 \
+--model psp \
+--pretrained checkpoints/gleason_psp.pth \
+--pretrained_refinement checkpoints/gleason_refinement.pth \
+--num_classes 5 \
+--sub_batch_size 1 \
+--n_points 0.5 \
+--n_patches -1 \
+--smooth_kernel 1 \
+--save_pred \
+--save_dir test_results/gleason

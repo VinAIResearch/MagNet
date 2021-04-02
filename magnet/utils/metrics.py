@@ -27,9 +27,21 @@ def get_mean_iou(conf_mat, dataset):
     IoU = getIoU(conf_mat)
     if dataset == "deepglobe":
         return np.nanmean(IoU[1:])
+    elif dataset == "gleason":
+        return np.nanmean(IoU[1:])
 
 def get_freq_iou(conf_mat, dataset):
     IoU = getIoU(conf_mat)
     freq = getFreq(conf_mat)
+    if dataset in ["deepglobe", "gleason"]:
+        return (IoU[1:] * freq[1:]).sum()/ freq[1:].sum()
+    # elif dataset == "gleason":
+    #     return (IoU * freq).sum()
+
+def get_overall_iou(conf_mat, dataset):
     if dataset == "deepglobe":
-        return (IoU[1:] * freq[1:]).sum()
+        return get_mean_iou(conf_mat, dataset)
+    elif dataset == "gleason":
+        return get_freq_iou(conf_mat, dataset)
+    else:
+        raise "Not implementation for dataset {}".format(dataset)

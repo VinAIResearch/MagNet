@@ -11,7 +11,7 @@ python test.py --dataset deepglobe \
 --num_classes 7 \
 --sub_batch_size 1 \
 --n_points 1.0 \
---n_patches 4 \
+--n_patches -1 \
 --smooth_kernel 17 \
 --save_pred \
 --save_dir test_results/deepglobe

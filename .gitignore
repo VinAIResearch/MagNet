@@ -143,6 +143,8 @@ cython_debug/
 # checkpoints
 checkpoints/*.pth
 data/deepglobe
+data/gleason
+data/*.zip
 runs/
 test_results/
 *.png

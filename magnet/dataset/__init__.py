@@ -1,7 +1,9 @@
 from .deepglobe import Deepglobe
+from .gleason import Gleason
 
 NAME2DATASET = {
-    "deepglobe": Deepglobe
+    "deepglobe": Deepglobe,
+    "gleason": Gleason
 }
 
 def get_dataset_with_name(dataset_name):

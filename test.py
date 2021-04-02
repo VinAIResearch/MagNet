@@ -19,7 +19,7 @@ from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
 from magnet.utils.blur import GaussianBlur, MedianBlur
-from magnet.utils.metrics import get_mean_iou, confusion_matrix, get_freq_iou
+from magnet.utils.metrics import get_mean_iou, confusion_matrix, get_freq_iou, get_overall_iou
 
 @torch.no_grad()
 def get_batch_predictions(model, sub_batch_size, patches, another=None):
@@ -240,8 +240,9 @@ def main():
         pbar.set_description(description)
 
     pbar.write("-------SUMMARY-------")
-    pbar.write("Coarse IoU: %.2f" % (get_mean_iou(conf_mat, opt.dataset)*100))
-    pbar.write("Refinement IoU: %.2f" % (get_mean_iou(refined_conf_mat, opt.dataset)*100))
+    # import pdb; pdb.set_trace()
+    pbar.write("Coarse IoU: %.2f" % (get_overall_iou(conf_mat, opt.dataset)*100))
+    pbar.write("Refinement IoU: %.2f" % (get_overall_iou(refined_conf_mat, opt.dataset)*100))
 
 
 if __name__ == "__main__":

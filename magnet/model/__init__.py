@@ -1,7 +1,9 @@
 from .fpn import ResnetFPN
+from .pspnet import PSPNet
 
 NAME2MODEL = {
-    "fpn": ResnetFPN
+    "fpn": ResnetFPN, 
+    "psp": PSPNet
 }
 
 def get_model_with_name(model_name):
