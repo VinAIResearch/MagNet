@@ -109,7 +109,8 @@ def main():
                 
                 coarse_pred = final_output.clone()
                 continue
-
+            if opt.n_patches == 1:
+                continue
             coords = ratios.clone()
             coords[:, 0] = coords[:, 0] * final_output.shape[3]
             coords[:, 1] = coords[:, 1] * final_output.shape[2]
@@ -211,7 +212,7 @@ def main():
         description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset)*100)
 
         # Compute IoU for fine prediction
-        final_output = final_output.argmax(1).cpu().numpy()
+        final_output = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, final_output, opt.num_classes)
         refined_conf_mat += mat
         description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset)*100)
@@ -240,7 +241,6 @@ def main():
         pbar.set_description(description)
 
     pbar.write("-------SUMMARY-------")
-    # import pdb; pdb.set_trace()
     pbar.write("Coarse IoU: %.2f" % (get_overall_iou(conf_mat, opt.dataset)*100))
     pbar.write("Refinement IoU: %.2f" % (get_overall_iou(refined_conf_mat, opt.dataset)*100))
 

@@ -17,7 +17,7 @@ from magnet.options.train import TrainOptions
 from magnet.model import get_model_with_name
 from magnet.model.refinement import LightRefinementMagNet, RefinementMagNet
 from magnet.utils.loss import OhemCrossEntropy
-from magnet.utils.metrics import get_freq_iou, get_mean_iou, confusion_matrix
+from magnet.utils.metrics import get_freq_iou, get_mean_iou, confusion_matrix, get_overall_iou
 
 def main():
 
@@ -136,9 +136,9 @@ def main():
         writer.add_scalar("epoch_loss", sum(mean_loss)/len(mean_loss), global_step=epoch+1)
         writer.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step=epoch+1)
         writer.add_scalars("epoch_IoU", {
-            "coarse": get_mean_iou(epoch_mat_coarse, opt.dataset),
-            "fine": get_mean_iou(epoch_mat_fine, opt.dataset),
-            "aggre": get_mean_iou(epoch_mat_aggre, opt.dataset)
+            "coarse": get_overall_iou(epoch_mat_coarse, opt.dataset),
+            "fine": get_overall_iou(epoch_mat_fine, opt.dataset),
+            "aggre": get_overall_iou(epoch_mat_aggre, opt.dataset)
         }, 
         global_step=epoch + 1)
 

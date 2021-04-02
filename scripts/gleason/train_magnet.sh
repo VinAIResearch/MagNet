@@ -1,0 +1,13 @@
+python train.py --dataset gleason \
+--root data/gleason \
+--datalist data/list/gleason/train.txt \
+--scales 625-625,1250-1250,2500-2500,5000-5000 \
+--crop_size 625 625 \
+--input_size 625 625 \
+--num_workers 8 \
+--model psp \
+--pretrained checkpoints/gleason_fpn.pth \
+--num_classes 7 \
+--batch_size 8 \
+--task_name gleason_refinement \
+--lr 0.001
