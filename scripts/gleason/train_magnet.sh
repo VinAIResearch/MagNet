@@ -6,8 +6,8 @@ python train.py --dataset gleason \
 --input_size 625 625 \
 --num_workers 8 \
 --model psp \
---pretrained checkpoints/gleason_fpn.pth \
---num_classes 7 \
---batch_size 8 \
+--pretrained checkpoints/gleason_psp.pth \
+--num_classes 5 \
+--batch_size 1 \
 --task_name gleason_refinement \
 --lr 0.001

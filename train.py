@@ -18,6 +18,7 @@ from magnet.model import get_model_with_name
 from magnet.model.refinement import LightRefinementMagNet, RefinementMagNet
 from magnet.utils.loss import OhemCrossEntropy
 from magnet.utils.metrics import get_freq_iou, get_mean_iou, confusion_matrix, get_overall_iou
+from magnet.utils.geometry import calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
 
 def main():
 
@@ -83,8 +84,8 @@ def main():
 
             # Get early predictions
             with torch.no_grad():
-                coarse_pred = model(coarse_image)
-                fine_pred = model(fine_image)
+                coarse_pred = model(coarse_image).softmax(1)
+                fine_pred = model(fine_image).softmax(1)
 
             # Crop preds
             # import pdb; pdb.set_trace()
@@ -110,8 +111,28 @@ def main():
             epoch_mat_coarse += coarse_mat
             fine_mat = confusion_matrix(fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes)
             epoch_mat_fine += fine_mat
-            aggre_mat = confusion_matrix(fine_label, logits.argmax(1).cpu().numpy(), opt.num_classes)
-            epoch_mat_aggre += aggre_mat
+
+            # Aggregate features
+            with torch.no_grad():
+                uncertainty_score = calculate_uncertainty(crop_preds)
+                certainty_score = 1.0 - calculate_uncertainty(fine_pred)
+
+                error_score = certainty_score * uncertainty_score
+
+                n_points = 32000
+                error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
+                error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
+                alter_pred = point_sample(logits.softmax(1), error_point_coords, align_corners=False)
+
+                b, c, h, w = crop_preds.shape
+                aggre_pred = (
+                            crop_preds.reshape(b, c, h * w)
+                            .scatter_(2, error_point_indices, alter_pred)
+                            .view(b, c, h, w)
+                        )
+
+                aggre_mat = confusion_matrix(fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes)
+                epoch_mat_aggre += aggre_mat
 
             IoU_coarse = get_freq_iou(coarse_mat, opt.dataset)
             description += "IoU coarse: %.2f, " %(IoU_coarse * 100)

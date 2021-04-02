@@ -153,7 +153,6 @@ def main():
             fine_pred, mask = ensemble(fine_pred, selected_ratios, scale)
 
             # Calculate certainty of fine_pred
-            start_time = time.time()
             certainty_score = 1.0 - calculate_uncertainty(fine_pred)
             
             if opt.n_patches > 0:
