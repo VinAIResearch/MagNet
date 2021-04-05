@@ -62,7 +62,7 @@ def main():
     # Create learning rate scheduler
     lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=opt.milestones, gamma=opt.gamma)
 
-    criteria = OhemCrossEntropy()
+    criteria = OhemCrossEntropy(ignore_label=dataset.ignore_label)
     global_step = 0
     for epoch in range(opt.epochs):
 
@@ -107,9 +107,9 @@ def main():
 
             # Calculate confusion matrix
             fine_label = fine_label.cpu().numpy()
-            coarse_mat = confusion_matrix(fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes)
+            coarse_mat = confusion_matrix(fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
             epoch_mat_coarse += coarse_mat
-            fine_mat = confusion_matrix(fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes)
+            fine_mat = confusion_matrix(fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
             epoch_mat_fine += fine_mat
 
             # Aggregate features
@@ -131,7 +131,7 @@ def main():
                             .view(b, c, h, w)
                         )
 
-                aggre_mat = confusion_matrix(fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes)
+                aggre_mat = confusion_matrix(fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
                 epoch_mat_aggre += aggre_mat
 
             IoU_coarse = get_freq_iou(coarse_mat, opt.dataset)

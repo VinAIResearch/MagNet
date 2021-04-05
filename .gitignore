@@ -144,6 +144,7 @@ cython_debug/
 checkpoints/*.pth
 data/deepglobe
 data/gleason
+data/cityscapes
 data/*.zip
 runs/
 test_results/

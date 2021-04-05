@@ -206,13 +206,13 @@ def main():
         # Compute IoU for coarse prediction
         start_time = time.time()
         coarse_pred = F.interpolate(coarse_pred, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
-        mat = confusion_matrix(label, coarse_pred, opt.num_classes)
+        mat = confusion_matrix(label, coarse_pred, opt.num_classes, ignore_label=dataset.ignore_label)
         conf_mat += mat
         description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset)*100)
 
         # Compute IoU for fine prediction
         final_output = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
-        mat = confusion_matrix(label, final_output, opt.num_classes)
+        mat = confusion_matrix(label, final_output, opt.num_classes, ignore_label=dataset.ignore_label)
         refined_conf_mat += mat
         description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset)*100)
 
@@ -223,6 +223,10 @@ def main():
             label = dataset.class2bgr(label[0])
             coarse_pred = dataset.class2bgr(coarse_pred[0])
             fine_pred = dataset.class2bgr(final_output[0])
+
+            if dataset.ignore_label is not None:
+                coarse_pred[label == dataset.ignore_label] = dataset.ignore_label
+                fine_pred[label == dataset.ignore_label] = dataset.ignore_label
 
             h = 512
             w = int((h * 1.0 / img.shape[0]) * img.shape[1])

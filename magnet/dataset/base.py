@@ -25,9 +25,11 @@ class BaseDataset(data.Dataset):
         self.crop_size = opt.crop_size          # Crop to this size
         self.input_size = opt.input_size        # Resize to this size
 
+        self.ignore_label = None
         self.label2color = {
 
         }
+        self.label_reading_mode = cv2.IMREAD_COLOR
 
         # Transformation
         # For training
@@ -58,7 +60,7 @@ class BaseDataset(data.Dataset):
     def __len__(self):
         return len(self.data)
 
-    def bgr2class(self, label):
+    def image2class(self, label):
         l, w = label.shape[0], label.shape[1]
         classmap = np.zeros(shape=(l, w), dtype=np.uint8)
         
@@ -87,7 +89,7 @@ class BaseDataset(data.Dataset):
         image = cv2.cvtColor(cv2.imread(image_path, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
 
         # Read label
-        label = cv2.imread(label_path, cv2.IMREAD_COLOR)
+        label = cv2.imread(label_path, self.label_reading_mode)
 
         if self.phase == "train":
             image, label = self.augment(image, label)
@@ -100,7 +102,7 @@ class BaseDataset(data.Dataset):
             coarse_image = self.image_transform(coarse_image)
             fine_image = self.image_transform(fine_image)
 
-            fine_label = self.bgr2class(fine_label)
+            fine_label = self.image2class(fine_label)
             fine_label = torch.from_numpy(fine_label).type(torch.LongTensor)
 
             return {"coarse_image": coarse_image,  "fine_image": fine_image, "fine_label": fine_label, "coord": torch.tensor(info).unsqueeze(0)}
@@ -109,7 +111,7 @@ class BaseDataset(data.Dataset):
         image_patches = []
         scale_idx = []
 
-        label = self.bgr2class(label)
+        label = self.image2class(label)
         for scale_id, patch_transform in enumerate(self.patch_transforms):
             image_crops = patch_transform(image)
 

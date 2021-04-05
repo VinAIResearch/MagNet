@@ -7,10 +7,10 @@ python test.py --dataset gleason \
 --num_workers 4 \
 --model psp \
 --pretrained checkpoints/gleason_psp.pth \
---pretrained_refinement checkpoints/gleason_refinement.pth \
+--pretrained_refinement checkpoints/epoch24.pth \
 --num_classes 5 \
 --sub_batch_size 1 \
---n_points 32768 \
+--n_points 1.0 \
 --n_patches -1 \
 --smooth_kernel 11 \
 --save_pred \
