@@ -26,12 +26,11 @@ def ensemble(patches, coords, output_size):
     if len(coords.shape) == 1:
         coords = [coords]
     
-    xmin, ymin, xmax, ymax = int((coords[0][0] * output_size[1]).round()), int((coords[0][1] * output_size[0]).round()), int((coords[0][2] * output_size[1]).round()), int((coords[0][3] * output_size[0]).round())
+    xmin, ymin, xmax, ymax = int((coords[0][0] * output_size[0]).round()), int((coords[0][1] * output_size[1]).round()), int((coords[0][2] * output_size[0]).round()), int((coords[0][3] * output_size[1]).round())
     patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
     
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
-        xmin, ymin, xmax, ymax = int((xmin * output_size[1]).round()), int((ymin * output_size[0]).round()), int((xmax * output_size[1]).round()), int((ymax * output_size[0]).round())
-        
+        xmin, ymin, xmax, ymax = int((xmin * output_size[0]).round()), int((ymin * output_size[1]).round()), int((xmax * output_size[0]).round()), int((ymax * output_size[1]).round())
         output[:, :, ymin:ymax, xmin:xmax] = patch
         mask[ymin:ymax, xmin:xmax] += 1.0
     output = output/ mask.unsqueeze(0).unsqueeze(0)

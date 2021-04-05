@@ -15,7 +15,7 @@ from tensorboardX import SummaryWriter
 from magnet.dataset import get_dataset_with_name
 from magnet.options.train import TrainOptions
 from magnet.model import get_model_with_name
-from magnet.model.refinement import LightRefinementMagNet, RefinementMagNet
+from magnet.model.refinement import RefinementMagNet
 from magnet.utils.loss import OhemCrossEntropy
 from magnet.utils.metrics import get_freq_iou, get_mean_iou, confusion_matrix, get_overall_iou
 from magnet.utils.geometry import calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample

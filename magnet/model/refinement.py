@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .base import BatchNorm2d, BN_MOMENTUM, Bottleneck, RefinementBottleneck
+from .base import BatchNorm2d, BN_MOMENTUM, Bottleneck
 
 class RefinementMagNet(nn.Module):
     def __init__(self, n_classes, use_bn=False, use_image=False):
@@ -54,11 +54,3 @@ class RefinementMagNet(nn.Module):
         x = self.residual(x)
 
         return self.seg_conv(x)
-
-class LightRefinementMagNet(RefinementMagNet):
-    def __init__(self, n_classes, use_bn=False, use_image=False):
-        super().__init__(n_classes, use_bn, use_image)
-
-        # 2 residual blocks
-        self.residual = self._make_layer(RefinementBottleneck, 64, 32, 2)
-        self.seg_conv = nn.Conv2d(32, n_classes, kernel_size=1, stride=1, padding=0, bias=False)

@@ -220,23 +220,23 @@ def main():
             img = dataset.inverse_transform(image_patches[0])
             img = np.array(to_pil_image(img))[:,:,::-1]
 
+            if dataset.ignore_label is not None:
+                coarse_pred[label == dataset.ignore_label] = dataset.ignore_label
+                final_output[label == dataset.ignore_label] = dataset.ignore_label
+
             label = dataset.class2bgr(label[0])
             coarse_pred = dataset.class2bgr(coarse_pred[0])
             fine_pred = dataset.class2bgr(final_output[0])
-
-            if dataset.ignore_label is not None:
-                coarse_pred[label == dataset.ignore_label] = dataset.ignore_label
-                fine_pred[label == dataset.ignore_label] = dataset.ignore_label
 
             h = 512
             w = int((h * 1.0 / img.shape[0]) * img.shape[1])
             save_image = np.zeros((h, w * 4 + 10 * 3, 3), dtype=np.uint8)
             save_image[:,:,2] = 255
 
-            save_image[:, :w] = cv2.resize(img, (h, w))
-            save_image[:, w+10: w*2+10] = cv2.resize(label, (h, w))
-            save_image[:, w*2+20: w*3+20] = cv2.resize(coarse_pred, (h, w))
-            save_image[:, w*3+30:] = cv2.resize(fine_pred, (h, w))
+            save_image[:, :w] = cv2.resize(img, (w, h))
+            save_image[:, w+10: w*2+10] = cv2.resize(label, (w, h))
+            save_image[:, w*2+20: w*3+20] = cv2.resize(coarse_pred, (w, h))
+            save_image[:, w*3+30:] = cv2.resize(fine_pred, (w, h))
             os.makedirs(opt.save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(opt.save_dir, data["name"][0]), save_image)
         

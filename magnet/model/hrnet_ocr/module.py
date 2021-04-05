@@ -1,9 +1,10 @@
 import logging
 
+import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from model.base import BatchNorm2d
+from magnet.model.base import BatchNorm2d, BN_MOMENTUM
 
 relu_inplace = True
 ALIGN_CORNERS = True
@@ -21,12 +22,6 @@ class ModuleHelper:
     @staticmethod
     def BatchNorm2d(*args, **kwargs):
         return BatchNorm2d
-
-
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
 
 
 class SpatialGather_Module(nn.Module):

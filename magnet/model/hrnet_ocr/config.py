@@ -1,4 +1,4 @@
-from model.base import BasicBlock, Bottleneck
+from magnet.model.base import BasicBlock, Bottleneck
 
 SMALL_CONFIG = {
     "FINAL_CONV_KERNEL": 1,

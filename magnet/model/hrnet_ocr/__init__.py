@@ -19,8 +19,8 @@ import torch.nn as nn
 import torch._utils
 import torch.nn.functional as F
 
-from model.base import Bottleneck, BatchNorm2d, BN_MOMENTUM
-from .module import SpatialGather_Module, SpatialOCR_Module, HighResolutionModule
+from magnet.model.base import Bottleneck, BatchNorm2d, BN_MOMENTUM
+from .module import SpatialGather_Module, SpatialOCR_Module, HighResolutionModule, relu_inplace, ALIGN_CORNERS
 from .config import blocks_dict, config_hrnet_w18_ocr, config_hrnet_w48_ocr
 
 
@@ -30,7 +30,7 @@ class HighResolutionNet(nn.Module):
 
         extra = self.config["EXTRA"]
         super(HighResolutionNet, self).__init__()
-        ALIGN_CORNERS = config["ALIGN_CORNERS"]
+        ALIGN_CORNERS = self.config["ALIGN_CORNERS"]
 
         # stem net
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1 if full_os else 2, padding=1,
@@ -79,8 +79,8 @@ class HighResolutionNet(nn.Module):
             self.stage4_cfg, num_channels, multi_scale_output=True)
 
         last_inp_channels = np.int(np.sum(pre_stage_channels))
-        ocr_mid_channels = config["OCR"]["MID_CHANNELS"]
-        ocr_key_channels = config["OCR"]["KEY_CHANNELS"]
+        ocr_mid_channels = self.config["OCR"]["MID_CHANNELS"]
+        ocr_key_channels = self.config["OCR"]["KEY_CHANNELS"]
 
         self.conv3x3_ocr = nn.Sequential(
             nn.Conv2d(last_inp_channels, ocr_mid_channels,
@@ -257,7 +257,7 @@ class HighResolutionNet(nn.Module):
         out_aux_seg.append(out)
         if not return_feat:
             x = (out + 0.4 * out_aux)/1.4 #out_aux_seg
-            return F.interpolate(x, size=(H,W), mode='bilinear')
+            return F.interpolate(x, size=(H,W), mode='bilinear', align_corners=ALIGN_CORNERS)
         else:
             return (out + 0.4 * out_aux)/1.4, feats
 

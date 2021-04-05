@@ -39,7 +39,7 @@ def get_freq_iou(conf_mat, dataset):
         return (IoU * freq).sum()
 
 def get_overall_iou(conf_mat, dataset):
-    if dataset in ["deepglobe", "cityscapes":
+    if dataset in ["deepglobe", "cityscapes"]:
         return get_mean_iou(conf_mat, dataset)
     elif dataset == "gleason":
         return get_freq_iou(conf_mat, dataset)
