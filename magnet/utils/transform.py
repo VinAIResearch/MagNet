@@ -175,3 +175,16 @@ class NormalizeInverse(TF.Normalize):
 
     def __call__(self, tensor):
         return super().__call__(tensor.clone())
+
+class ImageToTensor(object):
+    def __init__(self, mean, std):
+        super().__init__()
+        self.mean = mean
+        self.std = std
+    
+    def __call__(self, image):
+        image = image.astype(np.float32) / 255.0
+        image -= self.mean
+        image /= self.std
+        image = image.transpose((2, 0, 1))
+        return torch.from_numpy(image)

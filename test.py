@@ -54,17 +54,27 @@ def main():
 
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
-    refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
+    
     
     # Load pretrained weights for backbone
     state_dict = torch.load(opt.pretrained)
     model.load_state_dict(state_dict)
     _ = model.eval()
-
-    # Load pretrained weights for refinement module
-    state_dict = torch.load(opt.pretrained_refinement)
-    refinement_model.load_state_dict(state_dict, strict=False)
-    _ = refinement_model.eval()
+    
+    pretrained_weight = [opt.pretrained_refinement]
+    if isinstance(opt.pretrained_refinement, list):
+        assert len(opt.scales) - 1 == len(opt.pretrained_refinement), "The number of refinement weights must match (no.scales - 1)"
+        pretrained_weight = opt.pretrained_refinement
+    
+    refinement_models = []
+    for weight_path in pretrained_weight:
+        refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
+    
+        # Load pretrained weights for refinement module
+        state_dict = torch.load(weight_path)
+        refinement_model.load_state_dict(state_dict, strict=False)
+        _ = refinement_model.eval()
+        refinement_models += [refinement_model]
 
     # Patch coords
     patch_coords = []
@@ -109,13 +119,18 @@ def main():
                 
                 coarse_pred = final_output.clone()
                 continue
-            if opt.n_patches == 1:
+            if opt.n_patches == 0:
                 continue
+            
+            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
+
             coords = ratios.clone()
             coords[:, 0] = coords[:, 0] * final_output.shape[3]
             coords[:, 1] = coords[:, 1] * final_output.shape[2]
             coords[:, 2] = coords[:, 2] * final_output.shape[3]
             coords[:, 3] = coords[:, 3] * final_output.shape[2]
+            
+            # import pdb; pdb.set_trace()
 
             # Calculate uncertainty
             uncertainty = calculate_uncertainty(final_output)
@@ -123,7 +138,6 @@ def main():
             patch_uncertainty = patch_uncertainty.mean((1,2,3))
 
             # Choose patches with highest mean uncertainty
-            start_time = time.time()
             _, selected_patch_ids = torch.sort(patch_uncertainty)
 
             del patch_uncertainty
@@ -144,7 +158,7 @@ def main():
             coarse_preds = roi_align(final_output, [coords[selected_patch_ids]], output_size=(opt.input_size[1], opt.input_size[0]))
 
             # Refinement
-            fine_pred = get_batch_predictions(refinement_model, sub_batch_size, coarse_preds, scale_early_preds)
+            fine_pred = get_batch_predictions(refinement_models[min(len(refinement_models), idx) - 1], sub_batch_size, scale_early_preds, coarse_preds)
 
             del coarse_preds, scale_early_preds
 
@@ -164,13 +178,13 @@ def main():
             
 
             # Smoothing error score
-            start_time = time.time()
             _, _, h_e, w_e = error_score.shape
             error_score = F.interpolate(error_score, size=(opt.input_size[1], opt.input_size[0]))
             with torch.no_grad():
                 error_score = median_blur(error_score)
             error_score = F.interpolate(error_score, size=(h_e, w_e))
-            execution_time["blur"] = execution_time.get("blur", 0) + (time.time() - start_time)
+            # error_score = cv2.blur(error_score[0,0].cpu().numpy(),(32,32))
+            # error_score = torch.from_numpy(error_score).unsqueeze(0).unsqueeze(0).cuda()
             
             # Get point coordinates
             if opt.n_points > 1.0:
@@ -188,8 +202,6 @@ def main():
             
             if opt.n_patches > 0:
                 sample_mask = point_sample(mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False).type(torch.bool).squeeze()
-            
-            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
 
             if opt.n_patches > 0:
                 error_point_indices = error_point_indices[:, :, sample_mask]

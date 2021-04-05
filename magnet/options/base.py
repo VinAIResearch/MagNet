@@ -18,7 +18,7 @@ class BaseOptions():
         parser.add_argument('--model', required=True, type=str, help='model name: fpn')
         parser.add_argument('--num_classes', required=True, type=int, help='number of classes')
         parser.add_argument('--pretrained', required=True, type=str, help='pretrained weight')
-        parser.add_argument('--pretrained_refinement', type=str, default="", help='pretrained refinement module')
+        parser.add_argument('--pretrained_refinement', nargs="+", type=str, help='pretrained refinement module')
         self.parser = parser
 
     def parse(self):
@@ -29,5 +29,8 @@ class BaseOptions():
         
         args.crop_size = tuple(args.crop_size)
         args.input_size = tuple(args.input_size)
+
+        if len(args.pretrained_refinement) == 1:
+            args.pretrained_refinement = args.pretrained_refinement[0]
 
         return args

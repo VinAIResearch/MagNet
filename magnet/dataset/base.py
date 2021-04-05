@@ -7,7 +7,7 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 
-from magnet.utils.transform import SegCompose, OneOf, Resize, RandomCrop, RandomFlip, Patching, RandomPair, NormalizeInverse
+from magnet.utils.transform import SegCompose, OneOf, Resize, RandomCrop, RandomFlip, Patching, RandomPair, NormalizeInverse, ImageToTensor
 
 class BaseDataset(data.Dataset):
     def __init__(self, opt):
@@ -41,12 +41,13 @@ class BaseDataset(data.Dataset):
             for scale in self.scales:
                 self.patch_transforms += [Patching(scale, self.crop_size, Resize(scale), Resize(self.input_size))]
         
-        self.image_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ]
-        )
+        # self.image_transform = transforms.Compose(
+        #     [
+        #         transforms.ToTensor(),
+        #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #     ]
+        # )
+        self.image_transform = ImageToTensor([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
         self.inverse_transform = NormalizeInverse([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
