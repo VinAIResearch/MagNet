@@ -23,6 +23,7 @@ def ensemble(patches, coords, output_size):
 
     output = torch.zeros((1, C, output_size[1], output_size[0]), device=patches.device, dtype=patches.dtype)
     mask = torch.zeros((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
+    mask_ones = torch.ones((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
     if len(coords.shape) == 1:
         coords = [coords]
     
@@ -32,8 +33,8 @@ def ensemble(patches, coords, output_size):
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
         xmin, ymin, xmax, ymax = int((xmin * output_size[0]).round()), int((ymin * output_size[1]).round()), int((xmax * output_size[0]).round()), int((ymax * output_size[1]).round())
         output[:, :, ymin:ymax, xmin:xmax] = patch
-        mask[ymin:ymax, xmin:xmax] += 1.0
-    output = output/ mask.unsqueeze(0).unsqueeze(0)
+        mask[ymin+10:ymax-10, xmin+10:xmax-10] += 1.0
+    output = output/ torch.maximum(mask.unsqueeze(0).unsqueeze(0), mask_ones.unsqueeze(0).unsqueeze(0))
     mask = mask.type(torch.bool)
     return output, mask
 

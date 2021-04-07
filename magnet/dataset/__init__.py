@@ -1,10 +1,8 @@
 from .deepglobe import Deepglobe
-from .gleason import Gleason
 from .cityscapes import Cityscapes
 
 NAME2DATASET = {
     "deepglobe": Deepglobe,
-    "gleason": Gleason,
     "cityscapes": Cityscapes
 }
 

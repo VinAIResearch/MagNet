@@ -9,7 +9,7 @@ python test.py --dataset cityscapes \
 --pretrained checkpoints/cityscapes_hrnet.pth \
 --pretrained_refinement checkpoints/cityscapes_refinement_512.pth checkpoints/cityscapes_refinement_1024.pth checkpoints/cityscapes_refinement_2048.pth \
 --num_classes 19 \
---sub_batch_size 1 \
+--sub_batch_size 2 \
 --n_points 65536 \
 --n_patches -1 \
 --smooth_kernel 5 \
