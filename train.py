@@ -119,12 +119,13 @@ def main():
 
                 error_score = certainty_score * uncertainty_score
 
-                n_points = 32000
+                b, c, h, w = crop_preds.shape
+
+                n_points = int(h * w / 2)
                 error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
                 error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
                 alter_pred = point_sample(logits.softmax(1), error_point_coords, align_corners=False)
-
-                b, c, h, w = crop_preds.shape
+                
                 aggre_pred = (
                             crop_preds.reshape(b, c, h * w)
                             .scatter_(2, error_point_indices, alter_pred)
