@@ -1,9 +1,10 @@
 from .base import BaseDataset
 
+
 class Deepglobe(BaseDataset):
     def __init__(self, opt):
         super().__init__(opt)
-    
+
         self.label2color = {
             0: [0, 0, 0],
             1: [0, 255, 255],

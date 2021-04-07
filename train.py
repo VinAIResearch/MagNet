@@ -17,8 +17,9 @@ from magnet.options.train import TrainOptions
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.utils.loss import OhemCrossEntropy
-from magnet.utils.metrics import get_freq_iou, get_mean_iou, confusion_matrix, get_overall_iou
+from magnet.utils.metrics import get_freq_iou, confusion_matrix, get_overall_iou
 from magnet.utils.geometry import calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
+
 
 def main():
 
@@ -125,47 +126,45 @@ def main():
                 error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
                 error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
                 alter_pred = point_sample(logits.softmax(1), error_point_coords, align_corners=False)
-                
-                aggre_pred = (
-                            crop_preds.reshape(b, c, h * w)
-                            .scatter_(2, error_point_indices, alter_pred)
-                            .view(b, c, h, w)
-                        )
+
+                aggre_pred = (crop_preds.reshape(b, c, h * w)
+                              .scatter_(2, error_point_indices, alter_pred)
+                              .view(b, c, h, w))
 
                 aggre_mat = confusion_matrix(fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
                 epoch_mat_aggre += aggre_mat
 
             IoU_coarse = get_freq_iou(coarse_mat, opt.dataset)
-            description += "IoU coarse: %.2f, " %(IoU_coarse * 100)
+            description += "IoU coarse: %.2f, " % (IoU_coarse * 100)
 
             IoU_fine = get_freq_iou(fine_mat, opt.dataset)
-            description += "IoU fine: %.2f, " %(IoU_fine* 100)
-            
+            description += "IoU fine: %.2f, " % (IoU_fine * 100)
+
             IoU_aggre = get_freq_iou(aggre_mat, opt.dataset)
-            description += "IoU aggre: %.2f" %(IoU_aggre* 100)
+            description += "IoU aggre: %.2f" % (IoU_aggre * 100)
 
             writer.add_scalars("step_IoU", {"coarse": IoU_coarse, "fine": IoU_fine, "aggre": IoU_aggre}, global_step)
-            
-            description = "Epoch {}/{}: ".format(epoch+1, opt.epochs) + description
+
+            description = "Epoch {}/{}: ".format(epoch + 1, opt.epochs) + description
 
             pbar.set_description(description)
             pbar.update(1)
             global_step += 1
-        
+
         lr_scheduler.step()
 
         # Log epoch loss, lr, IoU
-        writer.add_scalar("epoch_loss", sum(mean_loss)/len(mean_loss), global_step=epoch+1)
-        writer.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step=epoch+1)
+        writer.add_scalar("epoch_loss", sum(mean_loss) / len(mean_loss), global_step=epoch + 1)
+        writer.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step=epoch + 1)
         writer.add_scalars("epoch_IoU", {
             "coarse": get_overall_iou(epoch_mat_coarse, opt.dataset),
             "fine": get_overall_iou(epoch_mat_fine, opt.dataset),
             "aggre": get_overall_iou(epoch_mat_aggre, opt.dataset)
-        }, 
-        global_step=epoch + 1)
+        }, global_step=epoch + 1)
 
         # Save model
         torch.save(refinement_model.state_dict(), os.path.join(log_dir, "epoch{}.pth".format(epoch + 1)))
+
 
 if __name__ == "__main__":
     main()

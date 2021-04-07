@@ -1,9 +1,9 @@
 import argparse
 
+
 class BaseOptions():
     def __init__(self):
-        parser = argparse.ArgumentParser(
-                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
         # Dataset config
         parser.add_argument('--dataset', required=True, type=str, help='dataset name: cityscapes, deepglobe')
@@ -26,7 +26,7 @@ class BaseOptions():
 
         # Parse scales
         args.scales = [tuple(int(x) for x in s.split("-")) for s in args.scales.split(",")]
-        
+
         args.crop_size = tuple(args.crop_size)
         args.input_size = tuple(args.input_size)
 

@@ -18,15 +18,16 @@ from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
-from magnet.utils.blur import GaussianBlur, MedianBlur
-from magnet.utils.metrics import get_mean_iou, confusion_matrix, get_freq_iou, get_overall_iou
+from magnet.utils.blur import MedianBlur
+from magnet.utils.metrics import confusion_matrix, get_freq_iou, get_overall_iou
+
 
 @torch.no_grad()
 def get_batch_predictions(model, sub_batch_size, patches, another=None):
 
     preds = []
     n_patches = patches.shape[0]
-    n_batches = math.ceil(n_patches/sub_batch_size)
+    n_batches = math.ceil(n_patches / sub_batch_size)
     for batch_idx in range(n_batches):
         max_index = min((batch_idx + 1) * sub_batch_size, n_patches)
         batch = patches[batch_idx * sub_batch_size: max_index]
@@ -37,6 +38,7 @@ def get_batch_predictions(model, sub_batch_size, patches, another=None):
                 preds += [torch.softmax(model(batch, another[batch_idx * sub_batch_size: max_index]), dim=1)]
     preds = torch.cat(preds, dim=0)
     return preds
+
 
 @torch.no_grad()
 def main():
@@ -54,22 +56,21 @@ def main():
 
     # Create model
     model = get_model_with_name(opt.model)(opt.num_classes).to(device)
-    
-    
+
     # Load pretrained weights for backbone
     state_dict = torch.load(opt.pretrained)
     model.load_state_dict(state_dict)
     _ = model.eval()
-    
+
     pretrained_weight = [opt.pretrained_refinement]
     if isinstance(opt.pretrained_refinement, list):
         assert len(opt.scales) - 1 == len(opt.pretrained_refinement), "The number of refinement weights must match (no.scales - 1)"
         pretrained_weight = opt.pretrained_refinement
-    
+
     refinement_models = []
     for weight_path in pretrained_weight:
         refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
-    
+
         # Load pretrained weights for refinement module
         state_dict = torch.load(weight_path)
         refinement_model.load_state_dict(state_dict, strict=False)
@@ -82,7 +83,7 @@ def main():
         patch_coords += [torch.tensor(get_patch_coords(scale, opt.crop_size)).to(device)]
 
     # Allocate prediction map
-    C, H, W = opt.num_classes, opt.scales[-1][1], opt.scales[-1][0]
+    _, H, W = opt.num_classes, opt.scales[-1][1], opt.scales[-1][0]
     final_output = None
 
     # Blur function
@@ -91,11 +92,11 @@ def main():
 
     conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
     refined_conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
-    
+
     # Test dataloader
     pbar = tqdm(total=len(dataset), ascii=True)
     for idx, data in enumerate(dataloader):
-        
+
         pbar.update(1)
         execution_time = {}
         description = ""
@@ -105,23 +106,22 @@ def main():
         label = data["label"].numpy()
 
         total_time = time.time()
-        eval_time = 0
         coarse_pred = None
 
         # Refine from coarse-to-fine
         for idx, (ratios, scale) in enumerate(zip(patch_coords, opt.scales)):
-            
+
             # If the first scale, get the prediction only
             if idx == 0:
-                
-                # Get prediction 
+
+                # Get prediction
                 final_output = get_batch_predictions(model, 1, image_patches[0:1].to(device))
-                
+
                 coarse_pred = final_output.clone()
                 continue
             if opt.n_patches == 0:
                 continue
-            
+
             final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
 
             coords = ratios.clone()
@@ -129,13 +129,13 @@ def main():
             coords[:, 1] = coords[:, 1] * final_output.shape[2]
             coords[:, 2] = coords[:, 2] * final_output.shape[3]
             coords[:, 3] = coords[:, 3] * final_output.shape[2]
-            
+
             # import pdb; pdb.set_trace()
 
             # Calculate uncertainty
             uncertainty = calculate_uncertainty(final_output)
             patch_uncertainty = roi_align(uncertainty, [coords], output_size=(opt.input_size[1], opt.input_size[0]))
-            patch_uncertainty = patch_uncertainty.mean((1,2,3))
+            patch_uncertainty = patch_uncertainty.mean((1, 2, 3))
 
             # Choose patches with highest mean uncertainty
             _, selected_patch_ids = torch.sort(patch_uncertainty)
@@ -147,7 +147,7 @@ def main():
 
             # Filter image_patches of this scale
             scale_image_patches = image_patches[scale_idx == idx]
-            
+
             # Filter image_patches with selected_patch_ids
             scale_image_patches = scale_image_patches[selected_patch_ids]
 
@@ -168,14 +168,13 @@ def main():
 
             # Calculate certainty of fine_pred
             certainty_score = 1.0 - calculate_uncertainty(fine_pred)
-            
+
             if opt.n_patches > 0:
-                certainty_score[:,:,mask] = 0.0
-            
+                certainty_score[:, :, mask] = 0.0
+
             uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode='bilinear', align_corners=False)
             error_score = certainty_score * uncertainty_score
             del certainty_score, uncertainty_score
-            
 
             # Smoothing error score
             _, _, h_e, w_e = error_score.shape
@@ -183,52 +182,49 @@ def main():
             with torch.no_grad():
                 error_score = median_blur(error_score)
             error_score = F.interpolate(error_score, size=(h_e, w_e))
-            
+
             # Get point coordinates
             if opt.n_points > 1.0:
-                n_points = min(int(opt.n_points), scale[0] * scale[1] * len(selected_patch_ids) /len(coords))
+                n_points = min(int(opt.n_points), scale[0] * scale[1] * len(selected_patch_ids) / len(coords))
             else:
-                n_points = int(scale[0] * scale[1] * opt.n_points * len(selected_patch_ids) /len(coords))
-            
+                n_points = int(scale[0] * scale[1] * opt.n_points * len(selected_patch_ids) / len(coords))
+
             error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
             del error_score
-            
-            error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)  
 
-            # Get refinement prediction 
+            error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
+
+            # Get refinement prediction
             fine_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
-            
+
             if opt.n_patches > 0:
                 sample_mask = point_sample(mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False).type(torch.bool).squeeze()
 
             if opt.n_patches > 0:
                 error_point_indices = error_point_indices[:, :, sample_mask]
                 fine_pred = fine_pred[:, :, sample_mask]
-                
-            final_output = (
-                            final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
+
+            final_output = (final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
                             .scatter_(2, error_point_indices, fine_pred)
-                            .view(1, opt.num_classes, scale[1], scale[0])
-                        )
-        
+                            .view(1, opt.num_classes, scale[1], scale[0]))
+
         execution_time["time"] = time.time() - total_time
 
         # Compute IoU for coarse prediction
-        start_time = time.time()
         coarse_pred = F.interpolate(coarse_pred, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, coarse_pred, opt.num_classes, ignore_label=dataset.ignore_label)
         conf_mat += mat
-        description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset)*100)
+        description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset) * 100)
 
         # Compute IoU for fine prediction
         final_output = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, final_output, opt.num_classes, ignore_label=dataset.ignore_label)
         refined_conf_mat += mat
-        description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset)*100)
+        description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset) * 100)
 
         if opt.save_pred:
             img = dataset.inverse_transform(image_patches[0])
-            img = np.array(to_pil_image(img))[:,:,::-1]
+            img = np.array(to_pil_image(img))[:, :, ::-1]
 
             if dataset.ignore_label is not None:
                 coarse_pred[label == dataset.ignore_label] = dataset.ignore_label
@@ -241,21 +237,21 @@ def main():
             h = 512
             w = int((h * 1.0 / img.shape[0]) * img.shape[1])
             save_image = np.zeros((h, w * 4 + 10 * 3, 3), dtype=np.uint8)
-            save_image[:,:,2] = 255
+            save_image[:, :, 2] = 255
 
             save_image[:, :w] = cv2.resize(img, (w, h))
-            save_image[:, w+10: w*2+10] = cv2.resize(label, (w, h))
-            save_image[:, w*2+20: w*3+20] = cv2.resize(coarse_pred, (w, h))
-            save_image[:, w*3+30:] = cv2.resize(fine_pred, (w, h))
+            save_image[:, w + 10: w * 2 + 10] = cv2.resize(label, (w, h))
+            save_image[:, w * 2 + 20: w * 3 + 20] = cv2.resize(coarse_pred, (w, h))
+            save_image[:, w * 3 + 30:] = cv2.resize(fine_pred, (w, h))
             os.makedirs(opt.save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(opt.save_dir, data["name"][0]), save_image)
-        
-        description += "".join([", %s: %.2f" % (k, v) for k,v in execution_time.items() if v > 0.01])
+
+        description += "".join([", %s: %.2f" % (k, v) for k, v in execution_time.items() if v > 0.01])
         pbar.set_description(description)
 
     pbar.write("-------SUMMARY-------")
-    pbar.write("Coarse IoU: %.2f" % (get_overall_iou(conf_mat, opt.dataset)*100))
-    pbar.write("Refinement IoU: %.2f" % (get_overall_iou(refined_conf_mat, opt.dataset)*100))
+    pbar.write("Coarse IoU: %.2f" % (get_overall_iou(conf_mat, opt.dataset) * 100))
+    pbar.write("Refinement IoU: %.2f" % (get_overall_iou(refined_conf_mat, opt.dataset) * 100))
 
 
 if __name__ == "__main__":

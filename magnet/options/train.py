@@ -1,5 +1,6 @@
 from .base import BaseOptions
 
+
 class TrainOptions(BaseOptions):
 
     def __init__(self):
@@ -14,9 +15,9 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--gamma', default=0.1, type=float, help='gamma for lr scheduler')
         parser.add_argument('--milestones', metavar='N', nargs="+", type=int, default=[10, 20, 30, 40, 45], help='milestones to reduce learning rate')
         parser.add_argument('--epochs', default=50, type=int, help='number of epochs for training')
-        
+
         self.parser = parser
-    
+
     def parse(self):
         args = super().parse()
         args.phase = "train"
