@@ -183,8 +183,6 @@ def main():
             with torch.no_grad():
                 error_score = median_blur(error_score)
             error_score = F.interpolate(error_score, size=(h_e, w_e))
-            # error_score = cv2.blur(error_score[0,0].cpu().numpy(),(32,32))
-            # error_score = torch.from_numpy(error_score).unsqueeze(0).unsqueeze(0).cuda()
             
             # Get point coordinates
             if opt.n_points > 1.0:

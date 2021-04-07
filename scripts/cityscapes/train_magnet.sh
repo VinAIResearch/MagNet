@@ -1,0 +1,13 @@
+python train.py --dataset cityscapes \
+--root data/cityscapes \
+--datalist data/list/cityscapes/val.txt \
+--scales 256-128,512-256,1024-512,2048-1024 \
+--crop_size 256 128 \
+--input_size 256 128 \
+--num_workers 8 \
+--model hrnet18+ocr \
+--pretrained checkpoints/cityscapes_hrnet.pth \
+--num_classes 19 \
+--batch_size 8 \
+--task_name cityscapes_refinement \
+--lr 0.001

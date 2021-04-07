@@ -7,7 +7,3 @@ wget https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_2048.pth
 # For deepglobe dataset
 wget https://public.vinai.io/magnet_cvpr2021/deepglobe_fpn.pth
 wget https://public.vinai.io/magnet_cvpr2021/deepglobe_refinement.pth
-
-# For gleason dataset
-wget https://public.vinai.io/magnet_cvpr2021/gleason_psp.pth
-wget https://public.vinai.io/magnet_cvpr2021/gleason_refinement.pth

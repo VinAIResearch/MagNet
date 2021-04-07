@@ -6,7 +6,7 @@ class BaseOptions():
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
         # Dataset config
-        parser.add_argument('--dataset', required=True, type=str, help='dataset name: cityscapes, deepglobe, gleason')
+        parser.add_argument('--dataset', required=True, type=str, help='dataset name: cityscapes, deepglobe')
         parser.add_argument('--root', required=True, type=str, help='path to images for training and testing')
         parser.add_argument('--datalist', required=True, type=str, help='path to .txt containing image and label path')
         parser.add_argument('--scales', required=True, type=str, help='scales: w1-h1,w2-h2,... , e.g. 512-512,1024-1024,2048-2048')
@@ -18,7 +18,7 @@ class BaseOptions():
         parser.add_argument('--model', required=True, type=str, help='model name: fpn')
         parser.add_argument('--num_classes', required=True, type=int, help='number of classes')
         parser.add_argument('--pretrained', required=True, type=str, help='pretrained weight')
-        parser.add_argument('--pretrained_refinement', nargs="+", type=str, help='pretrained refinement module')
+        parser.add_argument('--pretrained_refinement', nargs="+", default=[""] type=str, help='pretrained refinement module')
         self.parser = parser
 
     def parse(self):

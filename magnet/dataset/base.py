@@ -25,7 +25,7 @@ class BaseDataset(data.Dataset):
         self.crop_size = opt.crop_size          # Crop to this size
         self.input_size = opt.input_size        # Resize to this size
 
-        self.ignore_label = None
+        self.ignore_label = -1
         self.label2color = {
 
         }
@@ -41,13 +41,12 @@ class BaseDataset(data.Dataset):
             for scale in self.scales:
                 self.patch_transforms += [Patching(scale, self.crop_size, Resize(scale), Resize(self.input_size))]
         
-        # self.image_transform = transforms.Compose(
-        #     [
-        #         transforms.ToTensor(),
-        #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        #     ]
-        # )
-        self.image_transform = ImageToTensor([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        self.image_transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]
+        )
 
         self.inverse_transform = NormalizeInverse([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
