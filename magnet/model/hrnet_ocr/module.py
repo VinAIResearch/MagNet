@@ -10,6 +10,7 @@ relu_inplace = True
 ALIGN_CORNERS = True
 logger = logging.getLogger(__name__)
 
+
 class ModuleHelper:
 
     @staticmethod
@@ -26,7 +27,7 @@ class ModuleHelper:
 
 class SpatialGather_Module(nn.Module):
     """
-        Aggregate the context features according to the initial 
+        Aggregate the context features according to the initial
         predicted probability distribution.
         Employ the soft-weighted method to aggregate the context.
     """
@@ -36,13 +37,13 @@ class SpatialGather_Module(nn.Module):
         self.scale = scale
 
     def forward(self, feats, probs):
-        batch_size, c, h, w = probs.size(0), probs.size(1), probs.size(2), probs.size(3)
+        batch_size, c, _, _ = probs.size(0), probs.size(1), probs.size(2), probs.size(3)
         probs = probs.view(batch_size, c, -1)
         feats = feats.view(batch_size, feats.size(1), -1)
-        feats = feats.permute(0, 2, 1) # batch x hw x c 
-        probs = F.softmax(self.scale * probs, dim=2)# batch x k x hw
+        feats = feats.permute(0, 2, 1)  # batch x hw x c
+        probs = F.softmax(self.scale * probs, dim=2)  # batch x k x hw
         ocr_context = torch.matmul(probs, feats)\
-        .permute(0, 2, 1).unsqueeze(3)# batch x k x c
+                           .permute(0, 2, 1).unsqueeze(3)  # batch x k x c
         return ocr_context
 
 
@@ -59,11 +60,7 @@ class _ObjectAttentionBlock(nn.Module):
     Return:
         N X C X H X W
     '''
-    def __init__(self, 
-                 in_channels, 
-                 key_channels, 
-                 scale=1, 
-                 bn_type=None):
+    def __init__(self, in_channels, key_channels, scale=1, bn_type=None):
         super(_ObjectAttentionBlock, self).__init__()
         self.scale = scale
         self.in_channels = in_channels
@@ -71,28 +68,28 @@ class _ObjectAttentionBlock(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=(scale, scale))
         self.f_pixel = nn.Sequential(
             nn.Conv2d(in_channels=self.in_channels, out_channels=self.key_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.key_channels, bn_type=bn_type),
             nn.Conv2d(in_channels=self.key_channels, out_channels=self.key_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.key_channels, bn_type=bn_type),
         )
         self.f_object = nn.Sequential(
             nn.Conv2d(in_channels=self.in_channels, out_channels=self.key_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.key_channels, bn_type=bn_type),
             nn.Conv2d(in_channels=self.key_channels, out_channels=self.key_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.key_channels, bn_type=bn_type),
         )
         self.f_down = nn.Sequential(
             nn.Conv2d(in_channels=self.in_channels, out_channels=self.key_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.key_channels, bn_type=bn_type),
         )
         self.f_up = nn.Sequential(
             nn.Conv2d(in_channels=self.key_channels, out_channels=self.in_channels,
-                kernel_size=1, stride=1, padding=0, bias=False),
+                      kernel_size=1, stride=1, padding=0, bias=False),
             ModuleHelper.BNReLU(self.in_channels, bn_type=bn_type),
         )
 
@@ -109,7 +106,7 @@ class _ObjectAttentionBlock(nn.Module):
 
         sim_map = torch.matmul(query, key)
         sim_map = (self.key_channels**-.5) * sim_map
-        sim_map = F.softmax(sim_map, dim=-1)   
+        sim_map = F.softmax(sim_map, dim=-1)
 
         # add bg context ...
         context = torch.matmul(sim_map, value)
@@ -123,14 +120,10 @@ class _ObjectAttentionBlock(nn.Module):
 
 
 class ObjectAttentionBlock2D(_ObjectAttentionBlock):
-    def __init__(self, 
-                 in_channels, 
-                 key_channels, 
-                 scale=1, 
-                 bn_type=None):
+    def __init__(self, in_channels, key_channels, scale=1, bn_type=None):
         super(ObjectAttentionBlock2D, self).__init__(in_channels,
                                                      key_channels,
-                                                     scale, 
+                                                     scale,
                                                      bn_type=bn_type)
 
 
@@ -139,17 +132,11 @@ class SpatialOCR_Module(nn.Module):
     Implementation of the OCR module:
     We aggregate the global object representation to update the representation for each pixel.
     """
-    def __init__(self, 
-                 in_channels, 
-                 key_channels, 
-                 out_channels, 
-                 scale=1, 
-                 dropout=0.1, 
-                 bn_type=None):
+    def __init__(self, in_channels, key_channels, out_channels, scale=1, dropout=0.1, bn_type=None):
         super(SpatialOCR_Module, self).__init__()
-        self.object_context_block = ObjectAttentionBlock2D(in_channels, 
-                                                           key_channels, 
-                                                           scale, 
+        self.object_context_block = ObjectAttentionBlock2D(in_channels,
+                                                           key_channels,
+                                                           scale,
                                                            bn_type)
         _in_channels = 2 * in_channels
 
@@ -165,6 +152,7 @@ class SpatialOCR_Module(nn.Module):
         output = self.conv_bn_dropout(torch.cat([context, feats], 1))
 
         return output
+
 
 class HighResolutionModule(nn.Module):
     def __init__(self, num_branches, blocks, num_blocks, num_inchannels,
@@ -260,7 +248,7 @@ class HighResolutionModule(nn.Module):
                     fuse_layer.append(None)
                 else:
                     conv3x3s = []
-                    for k in range(i-j):
+                    for k in range(i - j):
                         if k == i - j - 1:
                             num_outchannels_conv3x3 = num_inchannels[i]
                             conv3x3s.append(nn.Sequential(
