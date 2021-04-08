@@ -25,11 +25,11 @@ IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
 
 ## Quickly run MagNet
 
-Before reading detail instructions about training and testing MagNet on your own machine, we provide a [Google Colab Notebook](https://colab.research.google.com/drive/1WTdfIQIEQrnoX40YIzs3HqeIKSZD_iPG?usp=sharing) for testing our pretrained models with street-view images. Please following the instructions in the notebook to experience the performance of our network.
+Before reading the detailed instruction about training and testing MagNet on your machine, we provide a [Google Colab Notebook](https://colab.research.google.com/drive/1WTdfIQIEQrnoX40YIzs3HqeIKSZD_iPG?usp=sharing) for testing our pre-trained models with street-view images. Please follow the instructions in the notebook to experience the performance of our network.
 
 ## Requirements
 
-The framework is tested on machines with following environment:
+The framework is tested on machines with the following environment:
 - Python >= 3.6
 - CUDA >= 10.0
 
@@ -51,7 +51,7 @@ To get the description of evaluation configs, please run the script below:
 python test.py --help
 ```
 
-Otherwise, there are sample scripts below to test with our pretrained models.
+Otherwise, there are sample scripts below to test with our pre-trained models.
 
 ### Cityscapes
 
@@ -79,7 +79,7 @@ sh scripts/deepglobe/test_magnet_fast.sh
 
 ### Training backbone networks
 
-Please reference to this [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train the backbone networks.
+Please refer to this [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train the backbone networks.
 
 ### Training refinement modules
 
