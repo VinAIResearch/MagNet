@@ -1,9 +1,5 @@
-import numpy as np
-
-import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-import torch.nn.functional as F
 
 from .base import Bottleneck
 
@@ -17,6 +13,7 @@ model_urls = {
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
+
 
 class ResNet(nn.Module):
 
@@ -61,7 +58,7 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         c1 = self.relu(x)
-        
+
         x = self.maxpool(c1)
 
         c2 = self.layer1(x)
@@ -80,7 +77,8 @@ def resnet50(pretrained=False, **kwargs):
     model = ResNet(Bottleneck, [3, 4, 6, 3])
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
-    return model       
+    return model
+
 
 def resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.

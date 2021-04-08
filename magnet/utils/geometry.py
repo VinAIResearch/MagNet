@@ -2,7 +2,7 @@ import math
 
 import torch
 import torch.nn.functional as F
-import time
+
 
 def get_patch_coords(size, input_size):
     coords = []
@@ -14,9 +14,10 @@ def get_patch_coords(size, input_size):
 
     for x in range(n_x):
         for y in range(n_y):
-            coords += [(x * step_x/size[0], y * step_y/size[1], (x * step_x + input_size[0])/size[0],  (y * step_y + input_size[1])/size[1])]
+            coords += [(x * step_x / size[0], y * step_y / size[1], (x * step_x + input_size[0]) / size[0], (y * step_y + input_size[1]) / size[1])]
 
     return coords
+
 
 def ensemble(patches, coords, output_size):
     _, C, _, _ = patches.shape
@@ -26,22 +27,24 @@ def ensemble(patches, coords, output_size):
     mask_ones = torch.ones((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
     if len(coords.shape) == 1:
         coords = [coords]
-    
+
     xmin, ymin, xmax, ymax = int((coords[0][0] * output_size[0]).round()), int((coords[0][1] * output_size[1]).round()), int((coords[0][2] * output_size[0]).round()), int((coords[0][3] * output_size[1]).round())
     patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
-    
+
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
         xmin, ymin, xmax, ymax = int((xmin * output_size[0]).round()), int((ymin * output_size[1]).round()), int((xmax * output_size[0]).round()), int((ymax * output_size[1]).round())
         output[:, :, ymin:ymax, xmin:xmax] = patch
-        mask[ymin+10:ymax-10, xmin+10:xmax-10] += 1.0
-    output = output/ torch.maximum(mask.unsqueeze(0).unsqueeze(0), mask_ones.unsqueeze(0).unsqueeze(0))
+        mask[ymin + 10: ymax - 10, xmin + 10: xmax - 10] += 1.0
+    output = output / torch.maximum(mask.unsqueeze(0).unsqueeze(0), mask_ones.unsqueeze(0).unsqueeze(0))
     mask = mask.type(torch.bool)
     return output, mask
+
 
 def calculate_uncertainty(seg_probs):
     top2_scores = torch.topk(seg_probs, k=2, dim=1)[0]
     res = (top2_scores[:, 0] - top2_scores[:, 1]).unsqueeze(1)
     return res
+
 
 def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
     """
@@ -61,13 +64,13 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
     R, _, H, W = uncertainty_map.shape
     h_step = 1.0 / float(H)
     w_step = 1.0 / float(W)
-    
+
     num_points = min(H * W, num_points)
-    
+
     uncertainty_map = uncertainty_map.view(R, H * W)
-    
+
     if num_points == H * W:
-        point_indices = torch.arange(start=0, end=H*W, device=uncertainty_map.device).view(1, -1).repeat(R, 1)
+        point_indices = torch.arange(start=0, end=H * W, device=uncertainty_map.device).view(1, -1).repeat(R, 1)
     else:
         point_indices = torch.topk(uncertainty_map, k=num_points, dim=1, sorted=False)[1]
 
@@ -75,17 +78,17 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
 
     point_coords[:, :, 0] = w_step / 2.0 + (point_indices % W).to(torch.float) * w_step
     point_coords[:, :, 1] = h_step / 2.0 + (point_indices // W).to(torch.float) * h_step
-    
+
     # Sort indices
     sorted_values = torch.sqrt(point_coords[:, :, 0] ** 2 + point_coords[:, :, 1] ** 2)
     indices = torch.argsort(sorted_values, 1)
-    
+
     for i in range(R):
-        
-        point_coords[i] = point_coords[i].gather(0, torch.stack([indices[i], indices[i]],dim=1))
+        point_coords[i] = point_coords[i].gather(0, torch.stack([indices[i], indices[i]], dim=1))
         point_indices[i] = point_indices[i].gather(0, indices[i])
-        
+
     return point_indices, point_coords
+
 
 def point_sample(input, point_coords, **kwargs):
     """

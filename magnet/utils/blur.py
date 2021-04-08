@@ -2,7 +2,6 @@ from typing import Tuple, List
 
 import torch
 import torch.nn as nn
-from torch.nn.functional import conv2d
 import torch.nn.functional as F
 
 
@@ -40,7 +39,6 @@ def get_gaussian_kernel(ksize: int, sigma: float) -> torch.Tensor:
                         .format(ksize))
     window_1d: torch.Tensor = gaussian(ksize, sigma)
     return window_1d
-
 
 
 def get_gaussian_kernel2d(ksize: Tuple[int, int],
@@ -84,7 +82,6 @@ def get_gaussian_kernel2d(ksize: Tuple[int, int],
     kernel_2d: torch.Tensor = torch.matmul(
         kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
     return kernel_2d
-
 
 
 class GaussianBlur(nn.Module):
@@ -191,6 +188,7 @@ def _compute_zero_padding(kernel_size: Tuple[int, int]) -> Tuple[int, int]:
     computed: List[int] = [(k - 1) // 2 for k in kernel_size]
     return computed[0], computed[1]
 
+
 def get_binary_kernel2d(window_size: Tuple[int, int]) -> torch.Tensor:
     r"""Creates a binary kernel to extract the patches. If the window size
     is HxW will create a (H*W)xHxW kernel.
@@ -200,6 +198,7 @@ def get_binary_kernel2d(window_size: Tuple[int, int]) -> torch.Tensor:
     for i in range(window_range):
         kernel[i, i] += 1.0
     return kernel.view(window_range, 1, window_size[0], window_size[1])
+
 
 def median_blur(input: torch.Tensor,
                 kernel_size: Tuple[int, int]) -> torch.Tensor:
@@ -237,12 +236,11 @@ def median_blur(input: torch.Tensor,
         input = F.conv2d(
             input.reshape(b * c, 1, h, w).detach(), kernel, padding=padding, stride=1)
         input = input.view(b, c, -1, h, w)  # BxCx(K_h * K_w)xHxW
-        
+
         # compute the median along the feature axis
         input = torch.median(input, dim=2)[0]
 
     return input
-
 
 
 class MedianBlur(nn.Module):
@@ -269,7 +267,7 @@ class MedianBlur(nn.Module):
     def __init__(self, channel: int, kernel_size: Tuple[int, int]) -> None:
         super(MedianBlur, self).__init__()
         self.kernel_size: Tuple[int, int] = kernel_size
-        
+
         padding: Tuple[int, int] = _compute_zero_padding(kernel_size)
         self.conv = nn.Conv2d(1, 1, kernel_size=kernel_size, stride=1, padding=padding, bias=False)
         kernel: torch.Tensor = get_binary_kernel2d(kernel_size)

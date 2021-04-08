@@ -9,8 +9,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import logging
-import functools
 
 import numpy as np
 
@@ -19,18 +17,18 @@ import torch.nn as nn
 import torch._utils
 import torch.nn.functional as F
 
-from magnet.model.base import Bottleneck, BatchNorm2d, BN_MOMENTUM
+from magnet.model.base import BatchNorm2d, BN_MOMENTUM
 from .module import SpatialGather_Module, SpatialOCR_Module, HighResolutionModule, relu_inplace, ALIGN_CORNERS
 from .config import blocks_dict, config_hrnet_w18_ocr, config_hrnet_w48_ocr
 
 
 class HighResolutionNet(nn.Module):
     config = None
+
     def __init__(self, n_classes, full_os=True):
 
         extra = self.config["EXTRA"]
         super(HighResolutionNet, self).__init__()
-        ALIGN_CORNERS = self.config["ALIGN_CORNERS"]
 
         # stem net
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1 if full_os else 2, padding=1,
@@ -46,7 +44,7 @@ class HighResolutionNet(nn.Module):
         block = blocks_dict[self.stage1_cfg['BLOCK']]
         num_blocks = self.stage1_cfg['NUM_BLOCKS'][0]
         self.layer1 = self._make_layer(block, 64, num_channels, num_blocks)
-        stage1_out_channel = block.expansion*num_channels
+        stage1_out_channel = block.expansion * num_channels
 
         self.stage2_cfg = extra['STAGE2']
         num_channels = self.stage2_cfg['NUM_CHANNELS']
@@ -107,7 +105,7 @@ class HighResolutionNet(nn.Module):
             nn.Conv2d(last_inp_channels, n_classes,
                       kernel_size=1, stride=1, padding=0, bias=True)
         )
-        
+
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
         num_branches_cur = len(num_channels_cur_layer)
@@ -131,10 +129,10 @@ class HighResolutionNet(nn.Module):
                     transition_layers.append(None)
             else:
                 conv3x3s = []
-                for j in range(i+1-num_branches_pre):
+                for j in range(i + 1 - num_branches_pre):
                     inchannels = num_channels_pre_layer[-1]
                     outchannels = num_channels_cur_layer[i] \
-                        if j == i-num_branches_pre else inchannels
+                        if j == i - num_branches_pre else inchannels
                     conv3x3s.append(nn.Sequential(
                         nn.Conv2d(
                             inchannels, outchannels, 3, 2, 1, bias=False),
@@ -232,12 +230,9 @@ class HighResolutionNet(nn.Module):
 
         # Upsampling
         x0_h, x0_w = x[0].size(2), x[0].size(3)
-        x1 = F.interpolate(x[1], size=(x0_h, x0_w),
-                        mode='bilinear', align_corners=ALIGN_CORNERS)
-        x2 = F.interpolate(x[2], size=(x0_h, x0_w),
-                        mode='bilinear', align_corners=ALIGN_CORNERS)
-        x3 = F.interpolate(x[3], size=(x0_h, x0_w),
-                        mode='bilinear', align_corners=ALIGN_CORNERS)
+        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=ALIGN_CORNERS)
+        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=ALIGN_CORNERS)
+        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=ALIGN_CORNERS)
 
         feats = torch.cat([x[0], x1, x2, x3], 1)
 
@@ -256,13 +251,13 @@ class HighResolutionNet(nn.Module):
         out_aux_seg.append(out_aux)
         out_aux_seg.append(out)
         if not return_feat:
-            x = (out + 0.4 * out_aux)/1.4 #out_aux_seg
-            return F.interpolate(x, size=(H,W), mode='bilinear', align_corners=ALIGN_CORNERS)
+            x = (out + 0.4 * out_aux) / 1.4  # out_aux_seg
+            return F.interpolate(x, size=(H, W), mode='bilinear', align_corners=ALIGN_CORNERS)
         else:
-            return (out + 0.4 * out_aux)/1.4, feats
+            return (out + 0.4 * out_aux) / 1.4, feats
 
     def init_weights(self, pretrained='',):
-        logger.info('=> init weights from normal distribution')
+        print('=> init weights from normal distribution')
         for name, m in self.named_modules():
             if any(part in name for part in {'cls', 'aux', 'ocr'}):
                 # print('skipped', name)
@@ -274,9 +269,9 @@ class HighResolutionNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained, map_location={'cuda:0': 'cpu'})
-            logger.info('=> loading pretrained model {}'.format(pretrained))
+            print('=> loading pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()
-            pretrained_dict = {k.replace('last_layer', 'aux_head').replace('model.', ''): v for k, v in pretrained_dict.items()}             
+            pretrained_dict = {k.replace('last_layer', 'aux_head').replace('model.', ''): v for k, v in pretrained_dict.items()}
             pretrained_dict = {k: v for k, v in pretrained_dict.items()
                                if k in model_dict.keys()}
             model_dict.update(pretrained_dict)
@@ -285,12 +280,13 @@ class HighResolutionNet(nn.Module):
             raise RuntimeError('No such file {}'.format(pretrained))
 
     def load_state_dict(self, state_dict):
-        state_dict = {k.replace("model.", ""):v for k,v in state_dict.items()}
+        state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
         super().load_state_dict(state_dict, strict=False)
 
 
 class HRNetW18_OCR(HighResolutionNet):
     config = config_hrnet_w18_ocr
+
 
 class HRNetW48_OCR(HighResolutionNet):
     config = config_hrnet_w48_ocr

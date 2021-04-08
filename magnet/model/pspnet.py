@@ -1,4 +1,3 @@
-import os
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -42,10 +41,9 @@ class PSPUpsample(nn.Module):
 
 
 class PSPNet(nn.Module):
-    def __init__(self, n_classes=18, sizes=(1, 2, 3, 6), psp_size=2048, deep_features_size=2048, backend='resnet101',
-                 pretrained=True):
+    def __init__(self, n_classes=18, sizes=(1, 2, 3, 6), psp_size=2048, deep_features_size=2048, pretrained=True):
         super().__init__()
-        self.feats = eval(backend)(pretrained)
+        self.feats = resnet101(pretrained)
         self.psp = PSPModule(psp_size, 1024, sizes)
         self.drop_1 = nn.Dropout2d(p=0.3)
 
@@ -59,7 +57,7 @@ class PSPNet(nn.Module):
         self.classifier = nn.Conv2d(deep_features_size, n_classes, kernel_size=1)
 
     def load_state_dict(self, state_dict):
-        state_dict = {k.replace("model.", ""):v for k,v in state_dict.items()}
+        state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
         super().load_state_dict(state_dict, strict=False)
 
     def forward(self, x, return_feat=False):
@@ -81,7 +79,7 @@ class PSPNet(nn.Module):
 
         p = self.final(p)
         p = F.interpolate(p, size=x.size()[2:], mode='bilinear', align_corners=False)
-        p = (p + 0.4 * auxiliary)/1.4
+        p = (p + 0.4 * auxiliary) / 1.4
         if return_feat:
             return p, f
-        return p 
+        return p

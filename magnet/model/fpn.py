@@ -6,17 +6,20 @@ import torch.nn.functional as F
 
 from .resnet import resnet50
 
+
 def get_rot_mat(theta):
     theta = torch.tensor(theta)
     return torch.tensor([[torch.cos(theta), -torch.sin(theta), 0],
                          [torch.sin(theta), torch.cos(theta), 0]])
 
+
 def rot_img(x, theta):
     dtype = x.dtype
     device = x.device
-    rot_mat = get_rot_mat(theta)[None, ...].type(dtype).repeat(x.shape[0],1,1).to(device)
+    rot_mat = get_rot_mat(theta)[None, ...].type(dtype).repeat(x.shape[0], 1, 1).to(device)
     grid = F.affine_grid(rot_mat, x.size(), align_corners=False).type(dtype).to(device)
     return F.grid_sample(x, grid, align_corners=False)
+
 
 class ResnetFPN(nn.Module):
     def __init__(self, n_labels):
@@ -24,7 +27,7 @@ class ResnetFPN(nn.Module):
         self.resnet_backbone = resnet50()
         self._up_kwargs = {'mode': 'bilinear', "align_corners": False}
         # Top layer
-        self.toplayer = nn.Conv2d(2048, 256, kernel_size=1, stride=1, padding=0) # Reduce channels
+        self.toplayer = nn.Conv2d(2048, 256, kernel_size=1, stride=1, padding=0)  # Reduce channels
         # Lateral layers
         self.latlayer1 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
         self.latlayer2 = nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0)
@@ -39,7 +42,7 @@ class ResnetFPN(nn.Module):
         self.smooth3_2 = nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1)
         self.smooth4_2 = nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1)
         # Classify layers
-        self.classify = nn.Conv2d(128*4, n_labels, kernel_size=3, stride=1, padding=1)
+        self.classify = nn.Conv2d(128 * 4, n_labels, kernel_size=3, stride=1, padding=1)
 
         self.pre_rotate = np.array([0, 90, 180, 270]) * np.pi / 180
         self.post_rotate = np.array([0, 270, 180, 90]) * np.pi / 180
@@ -47,7 +50,7 @@ class ResnetFPN(nn.Module):
         self.multi_test = False
 
     def load_state_dict(self, state_dict):
-        state_dict = {k.replace("model.", ""):v for k,v in state_dict.items()}
+        state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
         super().load_state_dict(state_dict, strict=False)
 
     def _concatenate(self, p5, p4, p3, p2):
@@ -84,31 +87,27 @@ class ResnetFPN(nn.Module):
         p4 = self._upsample_add(p5, self.latlayer1(c4))
         p3 = self._upsample_add(p4, self.latlayer2(c3))
         p2 = self._upsample_add(p3, self.latlayer3(c2))
-        ps0 = [p5, p4, p3, p2]
-        
+
         # Smooth
         p5 = self.smooth1_1(p5)
         p4 = self.smooth2_1(p4)
         p3 = self.smooth3_1(p3)
         p2 = self.smooth4_1(p2)
-        ps1 = [p5, p4, p3, p2]
-        
+
         p5 = self.smooth1_2(p5)
         p4 = self.smooth2_2(p4)
         p3 = self.smooth3_2(p3)
         p2 = self.smooth4_2(p2)
-        ps2 = [p5, p4, p3, p2]
 
         # Classify
         ps3 = self._concatenate(p5, p4, p3, p2)
         output = self.classify(ps3)
-        
+
         output = F.interpolate(output, size=(H, W), **self._up_kwargs)
 
         return output
-    
+
     def run_rotation(self, x):
-        
         out = 0
         for a, b in zip(self.pre_rotate, self.post_rotate):
             inp = rot_img(x, a)
