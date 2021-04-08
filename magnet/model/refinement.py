@@ -11,11 +11,11 @@ class RefinementMagNet(nn.Module):
         if use_bn:
             self.bn0 = BatchNorm2d(n_classes + 3 if use_image else n_classes * 2, momentum=BN_MOMENTUM)
         # 2 conv layers
-        self.conv1 = nn.Conv2d(n_classes + 3 if use_image else n_classes * 2, 64, kernel_size=3, stride=1, padding=1,
-                               bias=False)
+        self.conv1 = nn.Conv2d(
+            n_classes + 3 if use_image else n_classes * 2, 64, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.bn1 = BatchNorm2d(64, momentum=BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1,
-                               bias=False)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
 
@@ -29,8 +29,7 @@ class RefinementMagNet(nn.Module):
         downsample = None
         if stride != 1 or inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 BatchNorm2d(planes * block.expansion, momentum=BN_MOMENTUM),
             )
 

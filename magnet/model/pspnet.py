@@ -20,7 +20,10 @@ class PSPModule(nn.Module):
 
     def forward(self, feats):
         h, w = feats.size(2), feats.size(3)
-        priors = [F.interpolate(input=stage(feats), size=(h, w), mode='bilinear', align_corners=False) for stage in self.stages] + [feats]
+        priors = [
+            F.interpolate(input=stage(feats), size=(h, w), mode="bilinear", align_corners=False)
+            for stage in self.stages
+        ] + [feats]
         bottle = self.bottleneck(torch.cat(priors, 1))
         return self.relu(bottle)
 
@@ -29,14 +32,12 @@ class PSPUpsample(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.PReLU()
+            nn.Conv2d(in_channels, out_channels, 3, padding=1), nn.BatchNorm2d(out_channels), nn.PReLU()
         )
 
     def forward(self, x):
         h, w = 2 * x.size(2), 2 * x.size(3)
-        p = F.interpolate(input=x, size=(h, w), mode='bilinear', align_corners=False)
+        p = F.interpolate(input=x, size=(h, w), mode="bilinear", align_corners=False)
         return self.conv(p)
 
 
@@ -75,10 +76,10 @@ class PSPNet(nn.Module):
         p = self.drop_2(p)
 
         auxiliary = self.classifier(f)
-        auxiliary = F.interpolate(auxiliary, size=x.size()[2:], mode='bilinear', align_corners=False)
+        auxiliary = F.interpolate(auxiliary, size=x.size()[2:], mode="bilinear", align_corners=False)
 
         p = self.final(p)
-        p = F.interpolate(p, size=x.size()[2:], mode='bilinear', align_corners=False)
+        p = F.interpolate(p, size=x.size()[2:], mode="bilinear", align_corners=False)
         p = (p + 0.4 * auxiliary) / 1.4
         if return_feat:
             return p, f

@@ -93,8 +93,8 @@ class RandomCrop(object):
         x = np.random.randint(0, max_x)
         y = np.random.randint(0, max_y)
 
-        image = image[y: y + self.size[1], x: x + self.size[0]]
-        label = label if label is None else label[y: y + self.size[1], x: x + self.size[0]]
+        image = image[y : y + self.size[1], x : x + self.size[0]]
+        label = label if label is None else label[y : y + self.size[1], x : x + self.size[0]]
 
         return image, label
 
@@ -156,8 +156,8 @@ class RandomPair(object):
         xmax = xmin + (self.crop_size[0] * 1.0 / fine_image.shape[1] * coarse_image.shape[1])
         ymax = ymin + (self.crop_size[1] * 1.0 / fine_image.shape[0] * coarse_image.shape[0])
 
-        fine_image = fine_image[y: y + self.crop_size[1], x: x + self.crop_size[0]]
-        fine_label = fine_label[y: y + self.crop_size[1], x: x + self.crop_size[0]]
+        fine_image = fine_image[y : y + self.crop_size[1], x : x + self.crop_size[0]]
+        fine_label = fine_label[y : y + self.crop_size[1], x : x + self.crop_size[0]]
 
         info = (xmin, ymin, xmax, ymax)
 

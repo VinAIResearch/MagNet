@@ -17,7 +17,13 @@ from magnet.options.test import TestOptions
 from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
-from magnet.utils.geometry import get_patch_coords, calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample, ensemble
+from magnet.utils.geometry import (
+    get_patch_coords,
+    calculate_uncertainty,
+    get_uncertain_point_coords_on_grid,
+    point_sample,
+    ensemble,
+)
 from magnet.utils.blur import MedianBlur
 from magnet.utils.metrics import confusion_matrix, get_freq_iou, get_overall_iou
 
@@ -30,12 +36,12 @@ def get_batch_predictions(model, sub_batch_size, patches, another=None):
     n_batches = math.ceil(n_patches / sub_batch_size)
     for batch_idx in range(n_batches):
         max_index = min((batch_idx + 1) * sub_batch_size, n_patches)
-        batch = patches[batch_idx * sub_batch_size: max_index]
+        batch = patches[batch_idx * sub_batch_size : max_index]
         with torch.no_grad():
             if another is None:
                 preds += [torch.softmax(model(batch), dim=1)]
             else:
-                preds += [torch.softmax(model(batch, another[batch_idx * sub_batch_size: max_index]), dim=1)]
+                preds += [torch.softmax(model(batch, another[batch_idx * sub_batch_size : max_index]), dim=1)]
     preds = torch.cat(preds, dim=0)
     return preds
 
@@ -64,7 +70,9 @@ def main():
 
     pretrained_weight = [opt.pretrained_refinement]
     if isinstance(opt.pretrained_refinement, list):
-        assert len(opt.scales) - 1 == len(opt.pretrained_refinement), "The number of refinement weights must match (no.scales - 1)"
+        assert len(opt.scales) - 1 == len(
+            opt.pretrained_refinement
+        ), "The number of refinement weights must match (no.scales - 1)"
         pretrained_weight = opt.pretrained_refinement
 
     refinement_models = []
@@ -122,7 +130,7 @@ def main():
             if opt.n_patches == 0:
                 continue
 
-            final_output = F.interpolate(final_output, scale[::-1], mode='bilinear', align_corners=False)
+            final_output = F.interpolate(final_output, scale[::-1], mode="bilinear", align_corners=False)
 
             coords = ratios.clone()
             coords[:, 0] = coords[:, 0] * final_output.shape[3]
@@ -143,7 +151,7 @@ def main():
             del patch_uncertainty
 
             if opt.n_patches != -1:
-                selected_patch_ids = selected_patch_ids[:opt.n_patches]
+                selected_patch_ids = selected_patch_ids[: opt.n_patches]
 
             # Filter image_patches of this scale
             scale_image_patches = image_patches[scale_idx == idx]
@@ -155,10 +163,17 @@ def main():
             scale_early_preds = get_batch_predictions(model, sub_batch_size, scale_image_patches.to(device))
 
             # Get coarse preds (with coords and final_output)
-            coarse_preds = roi_align(final_output, [coords[selected_patch_ids]], output_size=(opt.input_size[1], opt.input_size[0]))
+            coarse_preds = roi_align(
+                final_output, [coords[selected_patch_ids]], output_size=(opt.input_size[1], opt.input_size[0])
+            )
 
             # Refinement
-            fine_pred = get_batch_predictions(refinement_models[min(len(refinement_models), idx) - 1], sub_batch_size, scale_early_preds, coarse_preds)
+            fine_pred = get_batch_predictions(
+                refinement_models[min(len(refinement_models), idx) - 1],
+                sub_batch_size,
+                scale_early_preds,
+                coarse_preds,
+            )
 
             del coarse_preds, scale_early_preds
 
@@ -172,7 +187,7 @@ def main():
             if opt.n_patches > 0:
                 certainty_score[:, :, mask] = 0.0
 
-            uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode='bilinear', align_corners=False)
+            uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode="bilinear", align_corners=False)
             error_score = certainty_score * uncertainty_score
             del certainty_score, uncertainty_score
 
@@ -198,26 +213,36 @@ def main():
             fine_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
 
             if opt.n_patches > 0:
-                sample_mask = point_sample(mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False).type(torch.bool).squeeze()
+                sample_mask = (
+                    point_sample(
+                        mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False
+                    )
+                    .type(torch.bool)
+                    .squeeze()
+                )
 
             if opt.n_patches > 0:
                 error_point_indices = error_point_indices[:, :, sample_mask]
                 fine_pred = fine_pred[:, :, sample_mask]
 
-            final_output = (final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
-                            .scatter_(2, error_point_indices, fine_pred)
-                            .view(1, opt.num_classes, scale[1], scale[0]))
+            final_output = (
+                final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
+                .scatter_(2, error_point_indices, fine_pred)
+                .view(1, opt.num_classes, scale[1], scale[0])
+            )
 
         execution_time["time"] = time.time() - total_time
 
         # Compute IoU for coarse prediction
-        coarse_pred = F.interpolate(coarse_pred, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
+        coarse_pred = F.interpolate(coarse_pred, (H, W), mode="bilinear", align_corners=False).argmax(1).cpu().numpy()
         mat = confusion_matrix(label, coarse_pred, opt.num_classes, ignore_label=dataset.ignore_label)
         conf_mat += mat
         description += "Coarse IoU: %.2f, " % (get_freq_iou(mat, opt.dataset) * 100)
 
         # Compute IoU for fine prediction
-        final_output = F.interpolate(final_output, (H, W), mode='bilinear', align_corners=False).argmax(1).cpu().numpy()
+        final_output = (
+            F.interpolate(final_output, (H, W), mode="bilinear", align_corners=False).argmax(1).cpu().numpy()
+        )
         mat = confusion_matrix(label, final_output, opt.num_classes, ignore_label=dataset.ignore_label)
         refined_conf_mat += mat
         description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset) * 100)
@@ -240,9 +265,9 @@ def main():
             save_image[:, :, 2] = 255
 
             save_image[:, :w] = cv2.resize(img, (w, h))
-            save_image[:, w + 10: w * 2 + 10] = cv2.resize(label, (w, h))
-            save_image[:, w * 2 + 20: w * 3 + 20] = cv2.resize(coarse_pred, (w, h))
-            save_image[:, w * 3 + 30:] = cv2.resize(fine_pred, (w, h))
+            save_image[:, w + 10 : w * 2 + 10] = cv2.resize(label, (w, h))
+            save_image[:, w * 2 + 20 : w * 3 + 20] = cv2.resize(coarse_pred, (w, h))
+            save_image[:, w * 3 + 30 :] = cv2.resize(fine_pred, (w, h))
             os.makedirs(opt.save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(opt.save_dir, data["name"][0]), save_image)
 

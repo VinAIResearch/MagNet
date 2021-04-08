@@ -14,7 +14,14 @@ def get_patch_coords(size, input_size):
 
     for x in range(n_x):
         for y in range(n_y):
-            coords += [(x * step_x / size[0], y * step_y / size[1], (x * step_x + input_size[0]) / size[0], (y * step_y + input_size[1]) / size[1])]
+            coords += [
+                (
+                    x * step_x / size[0],
+                    y * step_y / size[1],
+                    (x * step_x + input_size[0]) / size[0],
+                    (y * step_y + input_size[1]) / size[1],
+                )
+            ]
 
     return coords
 
@@ -28,13 +35,23 @@ def ensemble(patches, coords, output_size):
     if len(coords.shape) == 1:
         coords = [coords]
 
-    xmin, ymin, xmax, ymax = int((coords[0][0] * output_size[0]).round()), int((coords[0][1] * output_size[1]).round()), int((coords[0][2] * output_size[0]).round()), int((coords[0][3] * output_size[1]).round())
-    patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode='bilinear', align_corners=False)
+    xmin, ymin, xmax, ymax = (
+        int((coords[0][0] * output_size[0]).round()),
+        int((coords[0][1] * output_size[1]).round()),
+        int((coords[0][2] * output_size[0]).round()),
+        int((coords[0][3] * output_size[1]).round()),
+    )
+    patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode="bilinear", align_corners=False)
 
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
-        xmin, ymin, xmax, ymax = int((xmin * output_size[0]).round()), int((ymin * output_size[1]).round()), int((xmax * output_size[0]).round()), int((ymax * output_size[1]).round())
+        xmin, ymin, xmax, ymax = (
+            int((xmin * output_size[0]).round()),
+            int((ymin * output_size[1]).round()),
+            int((xmax * output_size[0]).round()),
+            int((ymax * output_size[1]).round()),
+        )
         output[:, :, ymin:ymax, xmin:xmax] = patch
-        mask[ymin + 10: ymax - 10, xmin + 10: xmax - 10] += 1.0
+        mask[ymin + 10 : ymax - 10, xmin + 10 : xmax - 10] += 1.0
     output = output / torch.maximum(mask.unsqueeze(0).unsqueeze(0), mask_ones.unsqueeze(0).unsqueeze(0))
     mask = mask.type(torch.bool)
     return output, mask

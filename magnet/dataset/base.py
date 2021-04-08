@@ -22,9 +22,9 @@ class BaseDataset(data.Dataset):
             for line in f.readlines():
                 self.data += [self.parse_info(line)]
 
-        self.scales = opt.scales                # Scale to this size
-        self.crop_size = opt.crop_size          # Crop to this size
-        self.input_size = opt.input_size        # Resize to this size
+        self.scales = opt.scales  # Scale to this size
+        self.crop_size = opt.crop_size  # Crop to this size
+        self.input_size = opt.input_size  # Resize to this size
 
         self.ignore_label = -1
         self.label2color = {}
@@ -41,10 +41,7 @@ class BaseDataset(data.Dataset):
                 self.patch_transforms += [Patching(scale, self.crop_size, Resize(scale), Resize(self.input_size))]
 
         self.image_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ]
+            [transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]
         )
 
         self.inverse_transform = NormalizeInverse([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -104,7 +101,12 @@ class BaseDataset(data.Dataset):
             fine_label = self.image2class(fine_label)
             fine_label = torch.from_numpy(fine_label).type(torch.LongTensor)
 
-            return {"coarse_image": coarse_image, "fine_image": fine_image, "fine_label": fine_label, "coord": torch.tensor(info).unsqueeze(0)}
+            return {
+                "coarse_image": coarse_image,
+                "fine_image": fine_image,
+                "fine_label": fine_label,
+                "coord": torch.tensor(info).unsqueeze(0),
+            }
 
         # Cropping with scales
         image_patches = []
@@ -118,4 +120,9 @@ class BaseDataset(data.Dataset):
             scale_idx += [scale_id for _ in range(len(image_crops))]
         image_patches = torch.stack(image_patches)
         scale_idx = torch.tensor(scale_idx)
-        return {"image_patches": image_patches, "scale_idx": scale_idx, "label": label, "name": image_path.split("/")[-1]}
+        return {
+            "image_patches": image_patches,
+            "scale_idx": scale_idx,
+            "label": label,
+            "name": image_path.split("/")[-1],
+        }

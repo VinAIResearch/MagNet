@@ -9,8 +9,7 @@ from .resnet import resnet50
 
 def get_rot_mat(theta):
     theta = torch.tensor(theta)
-    return torch.tensor([[torch.cos(theta), -torch.sin(theta), 0],
-                         [torch.sin(theta), torch.cos(theta), 0]])
+    return torch.tensor([[torch.cos(theta), -torch.sin(theta), 0], [torch.sin(theta), torch.cos(theta), 0]])
 
 
 def rot_img(x, theta):
@@ -25,7 +24,7 @@ class ResnetFPN(nn.Module):
     def __init__(self, n_labels):
         super(ResnetFPN, self).__init__()
         self.resnet_backbone = resnet50()
-        self._up_kwargs = {'mode': 'bilinear', "align_corners": False}
+        self._up_kwargs = {"mode": "bilinear", "align_corners": False}
         # Top layer
         self.toplayer = nn.Conv2d(2048, 256, kernel_size=1, stride=1, padding=0)  # Reduce channels
         # Lateral layers
@@ -61,7 +60,7 @@ class ResnetFPN(nn.Module):
         return torch.cat([p5, p4, p3, p2], dim=1)
 
     def _upsample_add(self, x, y):
-        '''Upsample and add two feature maps.
+        """Upsample and add two feature maps.
         Args:
           x: (Variable) top feature map to be upsampled.
           y: (Variable) lateral feature map.
@@ -75,7 +74,7 @@ class ResnetFPN(nn.Module):
         conv2d feature map size: [N,_,8,8] ->
         upsampled feature map size: [N,_,16,16]
         So we choose bilinear upsample which supports arbitrary output sizes.
-        '''
+        """
         _, _, H, W = y.size()
         return F.interpolate(x, size=(H, W), **self._up_kwargs) + y
 

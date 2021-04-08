@@ -7,9 +7,9 @@ import torch.nn.functional as F
 
 def gaussian(window_size, sigma):
     def gauss_fcn(x):
-        return -(x - window_size // 2)**2 / float(2 * sigma**2)
-    gauss = torch.stack(
-        [torch.exp(torch.tensor(gauss_fcn(x))) for x in range(window_size)])
+        return -((x - window_size // 2) ** 2) / float(2 * sigma ** 2)
+
+    gauss = torch.stack([torch.exp(torch.tensor(gauss_fcn(x))) for x in range(window_size)])
     return gauss / gauss.sum()
 
 
@@ -35,14 +35,12 @@ def get_gaussian_kernel(ksize: int, sigma: float) -> torch.Tensor:
         tensor([0.1201, 0.2339, 0.2921, 0.2339, 0.1201])
     """
     if not isinstance(ksize, int) or ksize % 2 == 0 or ksize <= 0:
-        raise TypeError("ksize must be an odd positive integer. Got {}"
-                        .format(ksize))
+        raise TypeError("ksize must be an odd positive integer. Got {}".format(ksize))
     window_1d: torch.Tensor = gaussian(ksize, sigma)
     return window_1d
 
 
-def get_gaussian_kernel2d(ksize: Tuple[int, int],
-                          sigma: Tuple[float, float]) -> torch.Tensor:
+def get_gaussian_kernel2d(ksize: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
     r"""Function that returns Gaussian filter matrix coefficients.
 
     Args:
@@ -70,17 +68,14 @@ def get_gaussian_kernel2d(ksize: Tuple[int, int],
                 [0.0370, 0.0720, 0.0899, 0.0720, 0.0370]])
     """
     if not isinstance(ksize, tuple) or len(ksize) != 2:
-        raise TypeError("ksize must be a tuple of length two. Got {}"
-                        .format(ksize))
+        raise TypeError("ksize must be a tuple of length two. Got {}".format(ksize))
     if not isinstance(sigma, tuple) or len(sigma) != 2:
-        raise TypeError("sigma must be a tuple of length two. Got {}"
-                        .format(sigma))
+        raise TypeError("sigma must be a tuple of length two. Got {}".format(sigma))
     ksize_x, ksize_y = ksize
     sigma_x, sigma_y = sigma
     kernel_x: torch.Tensor = get_gaussian_kernel(ksize_x, sigma_x)
     kernel_y: torch.Tensor = get_gaussian_kernel(ksize_y, sigma_y)
-    kernel_2d: torch.Tensor = torch.matmul(
-        kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
+    kernel_2d: torch.Tensor = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
     return kernel_2d
 
 
@@ -108,15 +103,15 @@ class GaussianBlur(nn.Module):
         >>> output = gauss(input)  # 2x4x5x5
     """
 
-    def __init__(self, channel: int, kernel_size: Tuple[int, int],
-                 sigma: Tuple[float, float]) -> None:
+    def __init__(self, channel: int, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> None:
         super(GaussianBlur, self).__init__()
         self.kernel_size: Tuple[int, int] = kernel_size
         self.sigma: Tuple[float, float] = sigma
         self._padding: Tuple[int, int] = self.compute_zero_padding(kernel_size)
-        kernel: torch.Tensor = self.create_gaussian_kernel(
-            kernel_size, sigma).repeat(channel, 1, 1, 1)
-        self.conv = nn.Conv2d(channel, channel, kernel_size=kernel_size, stride=1, padding=self._padding, groups=channel, bias=False)
+        kernel: torch.Tensor = self.create_gaussian_kernel(kernel_size, sigma).repeat(channel, 1, 1, 1)
+        self.conv = nn.Conv2d(
+            channel, channel, kernel_size=kernel_size, stride=1, padding=self._padding, groups=channel, bias=False
+        )
         self.conv.weight.data = kernel
 
     @staticmethod
@@ -133,11 +128,9 @@ class GaussianBlur(nn.Module):
 
     def forward(self, x: torch.Tensor):
         if not torch.is_tensor(x):
-            raise TypeError("Input x type is not a torch.Tensor. Got {}"
-                            .format(type(x)))
+            raise TypeError("Input x type is not a torch.Tensor. Got {}".format(type(x)))
         if not len(x.shape) == 4:
-            raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}"
-                             .format(x.shape))
+            raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}".format(x.shape))
         # prepare kernel
         # b, c, h, w = x.shape
         # tmp_kernel: torch.Tensor = self.kernel.to(x.device).to(x.dtype)
@@ -153,11 +146,7 @@ class GaussianBlur(nn.Module):
 ######################
 
 
-def gaussian_blur(src: torch.Tensor,
-                  kernel_size: Tuple[int,
-                                     int],
-                  sigma: Tuple[float,
-                               float]) -> torch.Tensor:
+def gaussian_blur(src: torch.Tensor, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
     r"""Function that blurs a tensor using a Gaussian filter.
 
     The operator smooths the given tensor with a gaussian kernel by convolving
@@ -200,8 +189,7 @@ def get_binary_kernel2d(window_size: Tuple[int, int]) -> torch.Tensor:
     return kernel.view(window_range, 1, window_size[0], window_size[1])
 
 
-def median_blur(input: torch.Tensor,
-                kernel_size: Tuple[int, int]) -> torch.Tensor:
+def median_blur(input: torch.Tensor, kernel_size: Tuple[int, int]) -> torch.Tensor:
     r"""Blurs an image using the median filter.
 
     Args:
@@ -218,12 +206,10 @@ def median_blur(input: torch.Tensor,
         torch.Size([2, 4, 5, 7])
     """
     if not isinstance(input, torch.Tensor):
-        raise TypeError("Input type is not a torch.Tensor. Got {}"
-                        .format(type(input)))
+        raise TypeError("Input type is not a torch.Tensor. Got {}".format(type(input)))
 
     if not len(input.shape) == 4:
-        raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}"
-                         .format(input.shape))
+        raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}".format(input.shape))
 
     padding: Tuple[int, int] = _compute_zero_padding(kernel_size)
 
@@ -233,8 +219,7 @@ def median_blur(input: torch.Tensor,
 
     # map the local window to single vector
     with torch.no_grad():
-        input = F.conv2d(
-            input.reshape(b * c, 1, h, w).detach(), kernel, padding=padding, stride=1)
+        input = F.conv2d(input.reshape(b * c, 1, h, w).detach(), kernel, padding=padding, stride=1)
         input = input.view(b, c, -1, h, w)  # BxCx(K_h * K_w)xHxW
 
         # compute the median along the feature axis

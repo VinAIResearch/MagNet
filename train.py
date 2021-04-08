@@ -58,7 +58,12 @@ def main():
     print("Number of training parameters:", sum(p.numel() for p in refinement_model.parameters() if p.requires_grad))
 
     # Create optimizer
-    optimizer = optim.SGD(filter(lambda p: p.requires_grad, refinement_model.parameters()), lr=opt.lr, momentum=opt.momentum, weight_decay=opt.decay)
+    optimizer = optim.SGD(
+        filter(lambda p: p.requires_grad, refinement_model.parameters()),
+        lr=opt.lr,
+        momentum=opt.momentum,
+        weight_decay=opt.decay,
+    )
 
     # Create learning rate scheduler
     lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=opt.milestones, gamma=opt.gamma)
@@ -108,9 +113,13 @@ def main():
 
             # Calculate confusion matrix
             fine_label = fine_label.cpu().numpy()
-            coarse_mat = confusion_matrix(fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
+            coarse_mat = confusion_matrix(
+                fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
+            )
             epoch_mat_coarse += coarse_mat
-            fine_mat = confusion_matrix(fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
+            fine_mat = confusion_matrix(
+                fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
+            )
             epoch_mat_fine += fine_mat
 
             # Aggregate features
@@ -127,11 +136,13 @@ def main():
                 error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
                 alter_pred = point_sample(logits.softmax(1), error_point_coords, align_corners=False)
 
-                aggre_pred = (crop_preds.reshape(b, c, h * w)
-                              .scatter_(2, error_point_indices, alter_pred)
-                              .view(b, c, h, w))
+                aggre_pred = (
+                    crop_preds.reshape(b, c, h * w).scatter_(2, error_point_indices, alter_pred).view(b, c, h, w)
+                )
 
-                aggre_mat = confusion_matrix(fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label)
+                aggre_mat = confusion_matrix(
+                    fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
+                )
                 epoch_mat_aggre += aggre_mat
 
             IoU_coarse = get_freq_iou(coarse_mat, opt.dataset)
@@ -156,11 +167,15 @@ def main():
         # Log epoch loss, lr, IoU
         writer.add_scalar("epoch_loss", sum(mean_loss) / len(mean_loss), global_step=epoch + 1)
         writer.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step=epoch + 1)
-        writer.add_scalars("epoch_IoU", {
-            "coarse": get_overall_iou(epoch_mat_coarse, opt.dataset),
-            "fine": get_overall_iou(epoch_mat_fine, opt.dataset),
-            "aggre": get_overall_iou(epoch_mat_aggre, opt.dataset)
-        }, global_step=epoch + 1)
+        writer.add_scalars(
+            "epoch_IoU",
+            {
+                "coarse": get_overall_iou(epoch_mat_coarse, opt.dataset),
+                "fine": get_overall_iou(epoch_mat_fine, opt.dataset),
+                "aggre": get_overall_iou(epoch_mat_aggre, opt.dataset),
+            },
+            global_step=epoch + 1,
+        )
 
         # Save model
         torch.save(refinement_model.state_dict(), os.path.join(log_dir, "epoch{}.pth".format(epoch + 1)))
