@@ -5,6 +5,15 @@ import torch.nn.functional as F
 
 
 def get_patch_coords(size, input_size):
+    """Get patch coordinations
+
+    Args:
+        size (Tuple([int, int])): size to be sliced (width, height)
+        input_size (Tuple([int, int])): patch size (width, height)
+
+    Returns:
+        List(Tuple([float, float, float, float])): list of coordinates (ratios) (xmin, ymin, xmax, ymax)
+    """
     coords = []
 
     n_x = math.ceil(size[0] / input_size[0])
@@ -27,14 +36,31 @@ def get_patch_coords(size, input_size):
 
 
 def ensemble(patches, coords, output_size):
+    """Ensemble patches with corresponding coordinates
+
+    Args:
+        patches (torch.Tensor): B x C x H x W
+            patches to ensemble
+        coords (torch.Tensor): B x 4
+            coordinates of patches (ratios)
+        output_size (Tuple([int, int])): output size (width, height)
+
+    Returns:
+        torch.Tensor: 1 x C x output_size[1] x output_size[0]
+            output ensembled by patches
+        torch.Tensor: output_size[1] x output_size[0]
+            mask of output, some places would have no patch
+    """
     _, C, _, _ = patches.shape
 
     output = torch.zeros((1, C, output_size[1], output_size[0]), device=patches.device, dtype=patches.dtype)
     mask = torch.zeros((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
     mask_ones = torch.ones((output_size[1], output_size[0]), device=patches.device, dtype=torch.float)
+
     if len(coords.shape) == 1:
         coords = [coords]
 
+    # Resize patches
     xmin, ymin, xmax, ymax = (
         int((coords[0][0] * output_size[0]).round()),
         int((coords[0][1] * output_size[1]).round()),
@@ -43,6 +69,7 @@ def ensemble(patches, coords, output_size):
     )
     patches = F.interpolate(patches, (ymax - ymin, xmax - xmin), mode="bilinear", align_corners=False)
 
+    # Ensemble patches
     for patch, (xmin, ymin, xmax, ymax) in zip(patches, coords):
         xmin, ymin, xmax, ymax = (
             int((xmin * output_size[0]).round()),
@@ -52,20 +79,32 @@ def ensemble(patches, coords, output_size):
         )
         output[:, :, ymin:ymax, xmin:xmax] = patch
         mask[ymin + 10 : ymax - 10, xmin + 10 : xmax - 10] += 1.0
+
+    # Handle overlapping regions
     output = output / torch.maximum(mask.unsqueeze(0).unsqueeze(0), mask_ones.unsqueeze(0).unsqueeze(0))
     mask = mask.type(torch.bool)
+
     return output, mask
 
 
 def calculate_uncertainty(seg_probs):
+    """Calculate the uncertainty of segmentation probability
+
+    Args:
+        seg_probs (torch.Tensor): B x C x H x W
+            probability map of segmentation
+
+    Returns:
+        torch.Tensor: B x 1 x H x W
+            uncertainty of input probability
+    """
     top2_scores = torch.topk(seg_probs, k=2, dim=1)[0]
     res = (top2_scores[:, 0] - top2_scores[:, 1]).unsqueeze(1)
     return res
 
 
 def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
-    """
-    Find `num_points` most uncertain points from `uncertainty_map` grid.
+    """Find `num_points` most uncertain points from `uncertainty_map` grid.
 
     Args:
         uncertainty_map (Tensor): A tensor of shape (N, 1, H, W) that contains uncertainty
@@ -108,8 +147,7 @@ def get_uncertain_point_coords_on_grid(uncertainty_map, num_points):
 
 
 def point_sample(input, point_coords, **kwargs):
-    """
-    A wrapper around :function:`torch.nn.functional.grid_sample` to support 3D point_coords tensors.
+    """A wrapper around :function:`torch.nn.functional.grid_sample` to support 3D point_coords tensors.
     Unlike :function:`torch.nn.functional.grid_sample` it assumes `point_coords` to lie inside
     [0, 1] x [0, 1] square.
 

@@ -6,6 +6,15 @@ BN_MOMENTUM = 0.01
 
 
 class Bottleneck(nn.Module):
+    """Bottleneck module
+
+    Args:
+        inplanes (int): no. input channels
+        planes (int): no. output channels
+        stride (int): stride
+        downsample (nn.Module): downsample module
+    """
+
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
@@ -45,11 +54,29 @@ class Bottleneck(nn.Module):
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
+    """Convolution layer 3x 3
+
+    Args:
+        in_planes (int): no. input channels
+        out_planes (int): no. output channels
+        stride (int, optional): stride. Defaults to 1.
+
+    Returns:
+        nn.Conv2d: convolution 3x3 layer
+    """
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 class BasicBlock(nn.Module):
+    """Basic residual block
+
+    Args:
+        inplanes (int): no. input channels
+        planes (int): no. output channels
+        stride (int): stride
+        downsample (nn.Module): downsample module
+    """
+
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):

@@ -9,32 +9,92 @@ from PIL import Image
 
 
 class SegCompose(object):
+    """Compose of augmentations applied to segmentation data
+
+    Args:
+        augmenters (List([object])): list of augmenters
+    """
+
     def __init__(self, augmenters):
         super().__init__()
         self.augmenters = augmenters
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         for augmenter in self.augmenters:
             image, label = augmenter(image, label)
         return image, label
 
 
 class OneOf(object):
+    """Choose one of augmentations and apply to image and label
+
+    Args:
+        augmenters (List([object])): list of augmenters
+    """
+
     def __init__(self, augmenters):
         super().__init__()
         self.augmenters = augmenters
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         augmenter = random.choice(self.augmenters)
         return augmenter(image, label)
 
 
 class Resize(object):
+    """Resize image and label
+
+    Args:
+        size (Tuple([int, int])): size to resize (width, height)
+    """
+
     def __init__(self, size):
         super().__init__()
         self.size = size
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         width, height = self.size
         h, w = image.shape[0], image.shape[1]
         if width == -1:
@@ -48,6 +108,15 @@ class Resize(object):
 
 
 class Patching(object):
+    """Patch processing image
+
+    Args:
+        scale (Tuple([int, int])): scale size (width, height)
+        crop (Tuple([int, int])): crop size (width, height)
+        preaugmenter (object, optional): augmenter applied before cropping. Defaults to None.
+        post_augmenter (object, optional): augmenter applied after cropping. Defaults to None.
+    """
+
     def __init__(self, scale, crop, pre_augmenter=None, post_augmenter=None):
         super().__init__()
         crops = []
@@ -64,7 +133,16 @@ class Patching(object):
         self.post_augmenter = post_augmenter
 
     def __call__(self, image):
+        """Apply augmentation
 
+        Args:
+            image (np.array): H x W 3
+                image
+
+        Returns:
+            List([np.array]): [h x w x 3]
+                list of crops
+        """
         if self.pre_augmenter is not None:
             image, _ = self.pre_augmenter(image, None)
         image_crops = []
@@ -80,11 +158,31 @@ class Patching(object):
 
 
 class RandomCrop(object):
+    """Random crop image and label
+
+    Args:
+        size (Tuple([int, int])): size of input
+    """
+
     def __init__(self, size):
         super().__init__()
         self.size = size
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         max_x = image.shape[1] - self.size[0]
         max_y = image.shape[0] - self.size[1]
 
@@ -98,11 +196,31 @@ class RandomCrop(object):
 
 
 class RandomRotate(object):
+    """Random rotate image and label
+
+    Args:
+        max_angle (int): maximum angle when applying rotation
+    """
+
     def __init__(self, max_angle):
         super().__init__()
         self.max_angle = max_angle
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         angle = random.randint(0, self.max_angle * 2) - self.max_angle
 
         image = Image.fromarray(image)
@@ -118,10 +236,26 @@ class RandomRotate(object):
 
 
 class RandomFlip(object):
+    """Random flip image and label"""
+
     def __init__(self):
         super().__init__()
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            image (np.array): h x w x 3
+                augmented image
+            label (np.array): h x w x 3 or h x w x 1
+                augmented label
+        """
         if np.random.rand() > 0.5:
             image = cv2.flip(image, 1)
             label = cv2.flip(label, 1)
@@ -129,6 +263,14 @@ class RandomFlip(object):
 
 
 class RandomPair(object):
+    """Random generate pairs for training
+
+    Args:
+        scales (List([Tuple([int, int])])): list of scales
+        crop_size (Tuple([int, int])): crop size (width, height)
+        input_size (Tuple([int, int])): input size (width, height)
+    """
+
     def __init__(self, scales, crop_size, input_size):
         super().__init__()
         self.scales = [Resize(scale) for scale in scales]
@@ -136,6 +278,25 @@ class RandomPair(object):
         self.resize = Resize(input_size)
 
     def __call__(self, image, label):
+        """Apply augmentation
+
+        Args:
+            image (np.array): h x w 3
+                image
+            label (np.array): h x w x 3 or h x w x 1
+                label
+
+        Returns:
+            np.array: h x w x 3
+                coarse image
+            np.array: h x w x 3 or h x w x 1
+                coarse label
+            np.array: h x w x 3
+                fine image
+            np.array: h x w x 3 or h x w x 1
+                fine label
+            Tuple([float, float, float, float]): cropping information
+        """
         # Resize to get coarse scale
         coarse_image, coarse_label = self.resize(image, label)
 
@@ -166,8 +327,11 @@ class RandomPair(object):
 
 
 class NormalizeInverse(TF.Normalize):
-    """
-    Undoes the normalization and returns the reconstructed images in the input domain.
+    """Undoes the normalization and returns the reconstructed images in the input domain.
+
+    Args:
+        mean (List([float, float, float])): mean value
+        std (List([float, float, float])): standard deviation
     """
 
     def __init__(self, mean, std):
@@ -179,17 +343,3 @@ class NormalizeInverse(TF.Normalize):
 
     def __call__(self, tensor):
         return super().__call__(tensor.clone())
-
-
-class ImageToTensor(object):
-    def __init__(self, mean, std):
-        super().__init__()
-        self.mean = mean
-        self.std = std
-
-    def __call__(self, image):
-        image = image.astype(np.float32) / 255.0
-        image -= self.mean
-        image /= self.std
-        image = image.transpose((2, 0, 1))
-        return torch.from_numpy(image)

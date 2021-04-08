@@ -6,19 +6,6 @@ import torch.nn.functional as F
 from .resnet import resnet50
 
 
-def get_rot_mat(theta):
-    theta = torch.tensor(theta)
-    return torch.tensor([[torch.cos(theta), -torch.sin(theta), 0], [torch.sin(theta), torch.cos(theta), 0]])
-
-
-def rot_img(x, theta):
-    dtype = x.dtype
-    device = x.device
-    rot_mat = get_rot_mat(theta)[None, ...].type(dtype).repeat(x.shape[0], 1, 1).to(device)
-    grid = F.affine_grid(rot_mat, x.size(), align_corners=False).type(dtype).to(device)
-    return F.grid_sample(x, grid, align_corners=False)
-
-
 class ResnetFPN(nn.Module):
     def __init__(self, n_labels):
         super(ResnetFPN, self).__init__()
@@ -77,7 +64,7 @@ class ResnetFPN(nn.Module):
         _, _, H, W = y.size()
         return F.interpolate(x, size=(H, W), **self._up_kwargs) + y
 
-    def _forward(self, image):
+    def forward(self, image):
         _, _, H, W = image.shape
         c2, c3, c4, c5 = self.resnet_backbone(image)
         # Top-down
@@ -104,18 +91,3 @@ class ResnetFPN(nn.Module):
         output = F.interpolate(output, size=(H, W), **self._up_kwargs)
 
         return output
-
-    def run_rotation(self, x):
-        out = 0
-        for a, b in zip(self.pre_rotate, self.post_rotate):
-            inp = rot_img(x, a)
-            temp_out = self._forward(inp)
-            out = out + rot_img(temp_out, b)
-            torch.cuda.empty_cache()
-            del inp, temp_out
-        return out
-
-    def forward(self, x):
-        if self.multi_test and not self.training:
-            return self.run_rotation(x)
-        return self._forward(x)

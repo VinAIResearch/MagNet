@@ -2,6 +2,8 @@ from .base import BaseDataset
 
 
 class Deepglobe(BaseDataset):
+    """Deepglobe dataset generator"""
+
     def __init__(self, opt):
         super().__init__(opt)
 

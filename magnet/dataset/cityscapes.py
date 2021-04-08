@@ -5,10 +5,13 @@ from .base import BaseDataset
 
 
 class Cityscapes(BaseDataset):
+    """Cityscapes dataset generator"""
+
     def __init__(self, opt):
         super().__init__(opt)
 
-        ignore_label = 255
+        # There are some ignored classes in this dataset
+        ignore_label = -1
         self.class_mapping = {
             -1: ignore_label,
             0: ignore_label,
@@ -69,9 +72,12 @@ class Cityscapes(BaseDataset):
             18: (119, 11, 32),
         }
         self.ignore_label = ignore_label
+
+        # Reading label as grayscale
         self.label_reading_mode = cv2.IMREAD_GRAYSCALE
 
     def image2class(self, label):
+        """Overwrite the parent class to convert grayscale label image"""
         l, w = label.shape[0], label.shape[1]
         classmap = np.zeros(shape=(l, w), dtype=np.uint8)
 

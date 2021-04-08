@@ -7,7 +7,18 @@ NAME2MODEL = {"fpn": ResnetFPN, "psp": PSPNet, "hrnet18+ocr": HRNetW18_OCR, "hrn
 
 
 def get_model_with_name(model_name):
+    """Get model class with defined name
+
+    Args:
+        model_name (str): name of model
+
+    Raises:
+        ValueError: if not found the model
+
+    Returns:
+        torch.nn.Module class: model class
+    """
     if model_name in NAME2MODEL:
         return NAME2MODEL[model_name]
     else:
-        raise "Cannot found the implementation of model " + model_name
+        raise ValueError("Cannot found the implementation of model " + model_name)

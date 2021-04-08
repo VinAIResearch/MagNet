@@ -92,7 +92,7 @@ def main():
     final_output = None
 
     # Blur function
-    median_blur = MedianBlur(channel=1, kernel_size=(opt.smooth_kernel, opt.smooth_kernel)).to(device)
+    median_blur = MedianBlur(kernel_size=(opt.smooth_kernel, opt.smooth_kernel)).to(device)
     median_blur.eval()
 
     conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)

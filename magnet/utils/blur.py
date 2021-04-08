@@ -1,11 +1,18 @@
-from typing import List, Tuple
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 def gaussian(window_size, sigma):
+    """Generate gaussian kernel
+
+    Args:
+        window_size (int): filter size
+        sigma (int): gaussian standard deviation
+    Returns:
+        torch.Tensor: (ksize, )
+            gaussian kernel
+    """
+
     def gauss_fcn(x):
         return -((x - window_size // 2) ** 2) / float(2 * sigma ** 2)
 
@@ -13,59 +20,43 @@ def gaussian(window_size, sigma):
     return gauss / gauss.sum()
 
 
-def get_gaussian_kernel(ksize: int, sigma: float) -> torch.Tensor:
-    r"""Function that returns Gaussian filter coefficients.
+def get_gaussian_kernel(ksize, sigma):
+    """Generate gaussian kernel
 
     Args:
-        ksize (int): filter size. It should be odd and positive.
-        sigma (float): gaussian standard deviation.
+        ksize (int): filter size, should be odd and positive
+        sigma (float): standard deviation of gaussian
+
+    Raises:
+        TypeError: when kernel size is not odd positive integer
 
     Returns:
-        Tensor: 1D tensor with gaussian filter coefficients.
-
-    Shape:
-        - Output: :math:`(ksize,)`
-
-    Examples::
-
-        >>> tgm.image.get_gaussian_kernel(3, 2.5)
-        tensor([0.3243, 0.3513, 0.3243])
-
-        >>> tgm.image.get_gaussian_kernel(5, 1.5)
-        tensor([0.1201, 0.2339, 0.2921, 0.2339, 0.1201])
+        torch.Tensor: (ksize, )
+            gaussian kernel
     """
+
     if not isinstance(ksize, int) or ksize % 2 == 0 or ksize <= 0:
         raise TypeError("ksize must be an odd positive integer. Got {}".format(ksize))
-    window_1d: torch.Tensor = gaussian(ksize, sigma)
+    window_1d = gaussian(ksize, sigma)
     return window_1d
 
 
-def get_gaussian_kernel2d(ksize: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
-    r"""Function that returns Gaussian filter matrix coefficients.
+def get_gaussian_kernel2d(ksize, sigma):
+    """Function that returns Gaussian filter matrix coefficients
 
     Args:
         ksize (Tuple[int, int]): filter sizes in the x and y direction.
          Sizes should be odd and positive.
-        sigma (Tuple[int, int]): gaussian standard deviation in the x and y
+        sigma (Tuple[float, float]): gaussian standard deviation in the x and y
          direction.
 
+    Raises:
+        TypeError: kernel size should be a tuple of two integers
+        TypeError: sigma size should be a tuple of two integers
+
     Returns:
-        Tensor: 2D tensor with gaussian filter matrix coefficients.
-
-    Shape:
-        - Output: :math:`(ksize_x, ksize_y)`
-
-    Examples::
-
-        >>> tgm.image.get_gaussian_kernel2d((3, 3), (1.5, 1.5))
-        tensor([[0.0947, 0.1183, 0.0947],
-                [0.1183, 0.1478, 0.1183],
-                [0.0947, 0.1183, 0.0947]])
-
-        >>> tgm.image.get_gaussian_kernel2d((3, 5), (1.5, 1.5))
-        tensor([[0.0370, 0.0720, 0.0899, 0.0720, 0.0370],
-                [0.0462, 0.0899, 0.1123, 0.0899, 0.0462],
-                [0.0370, 0.0720, 0.0899, 0.0720, 0.0370]])
+        torch.Tensor: (ksize_x, ksize_y)
+            2D tensor with gaussian filter matrix coefficients.
     """
     if not isinstance(ksize, tuple) or len(ksize) != 2:
         raise TypeError("ksize must be a tuple of length two. Got {}".format(ksize))
@@ -73,193 +64,122 @@ def get_gaussian_kernel2d(ksize: Tuple[int, int], sigma: Tuple[float, float]) ->
         raise TypeError("sigma must be a tuple of length two. Got {}".format(sigma))
     ksize_x, ksize_y = ksize
     sigma_x, sigma_y = sigma
-    kernel_x: torch.Tensor = get_gaussian_kernel(ksize_x, sigma_x)
-    kernel_y: torch.Tensor = get_gaussian_kernel(ksize_y, sigma_y)
-    kernel_2d: torch.Tensor = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
+    kernel_x = get_gaussian_kernel(ksize_x, sigma_x)
+    kernel_y = get_gaussian_kernel(ksize_y, sigma_y)
+    kernel_2d = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
     return kernel_2d
 
 
-class GaussianBlur(nn.Module):
-    r"""Creates an operator that blurs a tensor using a Gaussian filter.
+def compute_zero_padding(kernel_size):
+    """Compute zero padding for specific kernel size
 
-    The operator smooths the given tensor with a gaussian kernel by convolving
-    it to each channel. It suports batched operation.
-
-    Arguments:
-        kernel_size (Tuple[int, int]): the size of the kernel.
-        sigma (Tuple[float, float]): the standard deviation of the kernel.
+    Args:
+        kernel_size (Tuple[int, int]): kernel size
 
     Returns:
-        Tensor: the blurred tensor.
-
-    Shape:
-        - Input: :math:`(B, C, H, W)`
-        - Output: :math:`(B, C, H, W)`
-
-    Examples::
-
-        >>> input = torch.rand(2, 4, 5, 5)
-        >>> gauss = tgm.image.GaussianBlur((3, 3), (1.5, 1.5))
-        >>> output = gauss(input)  # 2x4x5x5
+        Tuple[int, int]: padding for each derection
     """
-
-    def __init__(self, channel: int, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> None:
-        super(GaussianBlur, self).__init__()
-        self.kernel_size: Tuple[int, int] = kernel_size
-        self.sigma: Tuple[float, float] = sigma
-        self._padding: Tuple[int, int] = self.compute_zero_padding(kernel_size)
-        kernel: torch.Tensor = self.create_gaussian_kernel(kernel_size, sigma).repeat(channel, 1, 1, 1)
-        self.conv = nn.Conv2d(
-            channel, channel, kernel_size=kernel_size, stride=1, padding=self._padding, groups=channel, bias=False
-        )
-        self.conv.weight.data = kernel
-
-    @staticmethod
-    def create_gaussian_kernel(kernel_size, sigma) -> torch.Tensor:
-        """Returns a 2D Gaussian kernel array."""
-        kernel: torch.Tensor = get_gaussian_kernel2d(kernel_size, sigma)
-        return kernel
-
-    @staticmethod
-    def compute_zero_padding(kernel_size: Tuple[int, int]) -> Tuple[int, int]:
-        """Computes zero padding tuple."""
-        computed = [(k - 1) // 2 for k in kernel_size]
-        return computed[0], computed[1]
-
-    def forward(self, x: torch.Tensor):
-        if not torch.is_tensor(x):
-            raise TypeError("Input x type is not a torch.Tensor. Got {}".format(type(x)))
-        if not len(x.shape) == 4:
-            raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}".format(x.shape))
-        # prepare kernel
-        # b, c, h, w = x.shape
-        # tmp_kernel: torch.Tensor = self.kernel.to(x.device).to(x.dtype)
-        # kernel: torch.Tensor = tmp_kernel.repeat(c, 1, 1, 1)
-
-        # convolve tensor with gaussian kernel
-        # return conv2d(x, kernel, padding=self._padding, stride=1, groups=c)
-        return self.conv(x)
-
-
-######################
-# functional interface
-######################
-
-
-def gaussian_blur(src: torch.Tensor, kernel_size: Tuple[int, int], sigma: Tuple[float, float]) -> torch.Tensor:
-    r"""Function that blurs a tensor using a Gaussian filter.
-
-    The operator smooths the given tensor with a gaussian kernel by convolving
-    it to each channel. It suports batched operation.
-
-    Arguments:
-        src (Tensor): the input tensor.
-        kernel_size (Tuple[int, int]): the size of the kernel.
-        sigma (Tuple[float, float]): the standard deviation of the kernel.
-
-    Returns:
-        Tensor: the blurred tensor.
-
-    Shape:
-        - Input: :math:`(B, C, H, W)`
-        - Output: :math:`(B, C, H, W)`
-
-    Examples::
-
-        >>> input = torch.rand(2, 4, 5, 5)
-        >>> output = tgm.image.gaussian_blur(input, (3, 3), (1.5, 1.5))
-    """
-    return GaussianBlur(kernel_size, sigma)(src)
-
-
-def _compute_zero_padding(kernel_size: Tuple[int, int]) -> Tuple[int, int]:
-    r"""Utility function that computes zero padding tuple."""
-    computed: List[int] = [(k - 1) // 2 for k in kernel_size]
+    computed = [(k - 1) // 2 for k in kernel_size]
     return computed[0], computed[1]
 
 
-def get_binary_kernel2d(window_size: Tuple[int, int]) -> torch.Tensor:
-    r"""Creates a binary kernel to extract the patches. If the window size
-    is HxW will create a (H*W)xHxW kernel.
+def get_binary_kernel2d(window_size):
+    """Create a binary kernel to extract the patches
+
+    Args:
+        window_size (Tuple[int, int]): window size
+
+    Returns:
+        torch.Tensor: (H * W) x H x W
+            The binary kernel
     """
-    window_range: int = window_size[0] * window_size[1]
-    kernel: torch.Tensor = torch.zeros(window_range, window_range)
+    window_range = window_size[0] * window_size[1]
+    kernel = torch.zeros(window_range, window_range)
     for i in range(window_range):
         kernel[i, i] += 1.0
     return kernel.view(window_range, 1, window_size[0], window_size[1])
 
 
-def median_blur(input: torch.Tensor, kernel_size: Tuple[int, int]) -> torch.Tensor:
-    r"""Blurs an image using the median filter.
+class GaussianBlur(nn.Module):
+    """Creates an operator that blurs a tensor using a Gaussian filter.
+
+    The operator smooths the given tensor with a gaussian kernel by convolving
+    it to each channel. It suports batched operation.
 
     Args:
-        input (torch.Tensor): the input image with shape :math:`(B,C,H,W)`.
-        kernel_size (Tuple[int, int]): the blurring kernel size.
+        channel (int): number of channels of the input
+        kernel_size (Tuple[int, int]): the size of the kernel.
+        sigma (Tuple[float, float]): the standard deviation of the kernel.
 
-    Returns:
-        torch.Tensor: the blurred input tensor with shape :math:`(B,C,H,W)`.
-
-    Example:
-        >>> input = torch.rand(2, 4, 5, 7)
-        >>> output = median_blur(input, (3, 3))
-        >>> output.shape
-        torch.Size([2, 4, 5, 7])
+    Attributes:
+        kernel_size (Tuple[int, int]): the size of the kernel.
+        sigma (Tuple[float, float]): the standard deviation of the kernel.
     """
-    if not isinstance(input, torch.Tensor):
-        raise TypeError("Input type is not a torch.Tensor. Got {}".format(type(input)))
 
-    if not len(input.shape) == 4:
-        raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}".format(input.shape))
+    def __init__(self, channel, kernel_size, sigma):
+        super(GaussianBlur, self).__init__()
+        self.kernel_size = kernel_size
+        self.sigma = sigma
+        self._padding = compute_zero_padding(kernel_size)
 
-    padding: Tuple[int, int] = _compute_zero_padding(kernel_size)
+        kernel: torch.Tensor = get_gaussian_kernel2d(kernel_size, sigma).repeat(channel, 1, 1, 1)
+        self._conv = nn.Conv2d(
+            channel, channel, kernel_size=kernel_size, stride=1, padding=self._padding, groups=channel, bias=False
+        )
+        self._conv.weight.data = kernel
 
-    # prepare kernel
-    kernel: torch.Tensor = get_binary_kernel2d(kernel_size).to(input)
-    b, c, h, w = input.shape
+    def forward(self, x):
+        """Apply gaussian blur to the input
 
-    # map the local window to single vector
-    with torch.no_grad():
-        input = F.conv2d(input.reshape(b * c, 1, h, w).detach(), kernel, padding=padding, stride=1)
-        input = input.view(b, c, -1, h, w)  # BxCx(K_h * K_w)xHxW
+        Args:
+            x (torch.Tensor): (B, C, H, W)
+                input tensor
 
-        # compute the median along the feature axis
-        input = torch.median(input, dim=2)[0]
+        Raises:
+            TypeError: input is torch tensor
+            ValueError: shape of input tensor should be B x C x H x W
 
-    return input
+        Returns:
+            torch.Tensor: (B, C, H, W)
+                output tensor
+        """
+        if not torch.is_tensor(x):
+            raise TypeError("Input x type is not a torch.Tensor. Got {}".format(type(x)))
+        if not len(x.shape) == 4:
+            raise ValueError("Invalid input shape, we expect BxCxHxW. Got: {}".format(x.shape))
+        return self._conv(x)
 
 
 class MedianBlur(nn.Module):
-    r"""Blurs an image using the median filter.
+    """[summary]
 
     Args:
-        kernel_size (Tuple[int, int]): the blurring kernel size.
-
-    Returns:
-        torch.Tensor: the blurred input tensor.
-
-    Shape:
-        - Input: :math:`(B, C, H, W)`
-        - Output: :math:`(B, C, H, W)`
-
-    Example:
-        >>> input = torch.rand(2, 4, 5, 7)
-        >>> blur = MedianBlur((3, 3))
-        >>> output = blur(input)
-        >>> output.shape
-        torch.Size([2, 4, 5, 7])
+        kernel_size (Tuple([int, int])): the size of blur kernel
+    Attributes:
+        kernel_size (Tuple([int, int])): the size of blur kernel
     """
 
-    def __init__(self, channel: int, kernel_size: Tuple[int, int]) -> None:
+    def __init__(self, kernel_size):
         super(MedianBlur, self).__init__()
-        self.kernel_size: Tuple[int, int] = kernel_size
+        self.kernel_size = kernel_size
 
-        padding: Tuple[int, int] = _compute_zero_padding(kernel_size)
-        self.conv = nn.Conv2d(1, 1, kernel_size=kernel_size, stride=1, padding=padding, bias=False)
-        kernel: torch.Tensor = get_binary_kernel2d(kernel_size)
-        self.conv.weight.data = kernel
+        padding = compute_zero_padding(kernel_size)
+        kernel = get_binary_kernel2d(kernel_size)
+        self._conv = nn.Conv2d(1, 1, kernel_size=kernel_size, stride=1, padding=padding, bias=False)
+        self._conv.weight.data = kernel
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        b, c, h, w = input.shape
-        input = self.conv(input.reshape(b * c, 1, h, w))
-        input = input.view(b, c, -1, h, w)
-        return torch.median(input, dim=2)[0]
+    def forward(self, x):
+        """Apply blur kernel to the input
+
+        Args:
+            x (torch.Tensor): B x C x H x W
+                input tensor
+
+        Returns:
+            torch.Tensor: B x C x H x W
+                output tensor
+        """
+        b, c, h, w = x.shape
+        x = self._conv(x.reshape(b * c, 1, h, w))
+        x = x.view(b, c, -1, h, w)
+        return torch.median(x, dim=2)[0]
