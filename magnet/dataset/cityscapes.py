@@ -11,7 +11,7 @@ class Cityscapes(BaseDataset):
         super().__init__(opt)
 
         # There are some ignored classes in this dataset
-        ignore_label = -1
+        ignore_label = 255
         self.class_mapping = {
             -1: ignore_label,
             0: ignore_label,

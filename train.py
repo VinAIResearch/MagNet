@@ -65,7 +65,9 @@ def main():
     # Create learning rate scheduler
     lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=opt.milestones, gamma=opt.gamma)
 
+    # Loss function
     criteria = OhemCrossEntropy(ignore_label=dataset.ignore_label)
+
     global_step = 0
     for epoch in range(opt.epochs):
 
@@ -74,6 +76,7 @@ def main():
 
         pbar = tqdm(total=len(dataloader))
 
+        # Metrics
         epoch_mat_coarse = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
         epoch_mat_fine = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
         epoch_mat_aggre = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
@@ -91,7 +94,6 @@ def main():
                 fine_pred = model(fine_image).softmax(1)
 
             # Crop preds
-            # import pdb; pdb.set_trace()
             crop_preds = roi_align(coarse_pred, coords, output_size=(opt.input_size[1], opt.input_size[0]))
 
             # Refinement forward
@@ -100,8 +102,11 @@ def main():
 
             # Calculate loss
             loss = criteria(logits, fine_label)
+
+            # Backward
             loss.backward()
             optimizer.step()
+
             description = "loss: %.2f, " % (loss)
             mean_loss += [float(loss)]
             writer.add_scalar("step_loss", loss, global_step)
@@ -110,10 +115,12 @@ def main():
 
             # Calculate confusion matrix
             fine_label = fine_label.cpu().numpy()
+
             coarse_mat = confusion_matrix(
                 fine_label, crop_preds.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
             )
             epoch_mat_coarse += coarse_mat
+
             fine_mat = confusion_matrix(
                 fine_label, fine_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
             )
@@ -121,14 +128,16 @@ def main():
 
             # Aggregate features
             with torch.no_grad():
+
+                # Calulate error score
                 uncertainty_score = calculate_uncertainty(crop_preds)
                 certainty_score = 1.0 - calculate_uncertainty(fine_pred)
-
                 error_score = certainty_score * uncertainty_score
 
                 b, c, h, w = crop_preds.shape
-
                 n_points = int(h * w / 2)
+
+                # Point sample half of total points
                 error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
                 error_point_indices = error_point_indices.unsqueeze(1).expand(-1, opt.num_classes, -1)
                 alter_pred = point_sample(logits.softmax(1), error_point_coords, align_corners=False)
@@ -137,6 +146,7 @@ def main():
                     crop_preds.reshape(b, c, h * w).scatter_(2, error_point_indices, alter_pred).view(b, c, h, w)
                 )
 
+                # Compute confusion matrix of refined prediction
                 aggre_mat = confusion_matrix(
                     fine_label, aggre_pred.argmax(1).cpu().numpy(), opt.num_classes, ignore_label=dataset.ignore_label
                 )
@@ -159,6 +169,7 @@ def main():
             pbar.update(1)
             global_step += 1
 
+        # Update learning rate
         lr_scheduler.step()
 
         # Log epoch loss, lr, IoU

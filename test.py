@@ -27,10 +27,24 @@ from tqdm import tqdm
 
 @torch.no_grad()
 def get_batch_predictions(model, sub_batch_size, patches, another=None):
+    """Inference model with batch
 
+    Args:
+        model (nn.Module): model to inference
+        sub_batch_size (int): batch size
+        patches (torch.Tensor): B x C x H x W
+            patches to infer
+        another (torch.Tensor, optional): B x C x H x W, another inputs. Defaults to None.
+
+    Returns:
+        torch.Tensor: B x C x H x W
+            predictions (after softmax layer)
+    """
     preds = []
     n_patches = patches.shape[0]
     n_batches = math.ceil(n_patches / sub_batch_size)
+
+    # Process each batch
     for batch_idx in range(n_batches):
         max_index = min((batch_idx + 1) * sub_batch_size, n_patches)
         batch = patches[batch_idx * sub_batch_size : max_index]
@@ -65,6 +79,7 @@ def main():
     model.load_state_dict(state_dict)
     _ = model.eval()
 
+    # Create refinement models
     pretrained_weight = [opt.pretrained_refinement]
     if isinstance(opt.pretrained_refinement, list):
         assert len(opt.scales) - 1 == len(
@@ -73,6 +88,8 @@ def main():
         pretrained_weight = opt.pretrained_refinement
 
     refinement_models = []
+
+    # Load pretrained weight of refinement modules
     for weight_path in pretrained_weight:
         refinement_model = RefinementMagNet(opt.num_classes, use_bn=True).to(device)
 
@@ -91,10 +108,11 @@ def main():
     _, H, W = opt.num_classes, opt.scales[-1][1], opt.scales[-1][0]
     final_output = None
 
-    # Blur function
+    # Blur operator
     median_blur = MedianBlur(kernel_size=(opt.smooth_kernel, opt.smooth_kernel)).to(device)
     median_blur.eval()
 
+    # Confusion matrix
     conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
     refined_conf_mat = np.zeros((opt.num_classes, opt.num_classes), dtype=np.float)
 
@@ -124,9 +142,11 @@ def main():
 
                 coarse_pred = final_output.clone()
                 continue
+
             if opt.n_patches == 0:
                 continue
 
+            # Upscale current output
             final_output = F.interpolate(final_output, scale[::-1], mode="bilinear", align_corners=False)
 
             coords = ratios.clone()
@@ -134,8 +154,6 @@ def main():
             coords[:, 1] = coords[:, 1] * final_output.shape[2]
             coords[:, 2] = coords[:, 2] * final_output.shape[3]
             coords[:, 3] = coords[:, 3] * final_output.shape[2]
-
-            # import pdb; pdb.set_trace()
 
             # Calculate uncertainty
             uncertainty = calculate_uncertainty(final_output)
@@ -185,6 +203,8 @@ def main():
                 certainty_score[:, :, mask] = 0.0
 
             uncertainty_score = F.interpolate(uncertainty, scale[::-1], mode="bilinear", align_corners=False)
+
+            # Calculate error score
             error_score = certainty_score * uncertainty_score
             del certainty_score, uncertainty_score
 
@@ -195,12 +215,12 @@ def main():
                 error_score = median_blur(error_score)
             error_score = F.interpolate(error_score, size=(h_e, w_e))
 
-            # Get point coordinates
             if opt.n_points > 1.0:
                 n_points = min(int(opt.n_points), scale[0] * scale[1] * len(selected_patch_ids) / len(coords))
             else:
                 n_points = int(scale[0] * scale[1] * opt.n_points * len(selected_patch_ids) / len(coords))
 
+            # Get point coordinates
             error_point_indices, error_point_coords = get_uncertain_point_coords_on_grid(error_score, n_points)
             del error_score
 
@@ -210,6 +230,7 @@ def main():
             fine_pred = point_sample(fine_pred, error_point_coords, align_corners=False)
 
             if opt.n_patches > 0:
+                # Apply mask
                 sample_mask = (
                     point_sample(
                         mask.type(torch.float).unsqueeze(0).unsqueeze(0), error_point_coords, align_corners=False
@@ -217,11 +238,10 @@ def main():
                     .type(torch.bool)
                     .squeeze()
                 )
-
-            if opt.n_patches > 0:
                 error_point_indices = error_point_indices[:, :, sample_mask]
                 fine_pred = fine_pred[:, :, sample_mask]
 
+            # Replace points with new prediction
             final_output = (
                 final_output.reshape(1, opt.num_classes, scale[0] * scale[1])
                 .scatter_(2, error_point_indices, fine_pred)
@@ -245,17 +265,21 @@ def main():
         description += "Refinement IoU: %.2f" % (get_freq_iou(mat, opt.dataset) * 100)
 
         if opt.save_pred:
+            # Transform tensor to images
             img = dataset.inverse_transform(image_patches[0])
             img = np.array(to_pil_image(img))[:, :, ::-1]
 
+            # Ignore label
             if dataset.ignore_label is not None:
                 coarse_pred[label == dataset.ignore_label] = dataset.ignore_label
                 final_output[label == dataset.ignore_label] = dataset.ignore_label
 
+            # Convert predictions to images
             label = dataset.class2bgr(label[0])
             coarse_pred = dataset.class2bgr(coarse_pred[0])
             fine_pred = dataset.class2bgr(final_output[0])
 
+            # Combine images, gt, predictions
             h = 512
             w = int((h * 1.0 / img.shape[0]) * img.shape[1])
             save_image = np.zeros((h, w * 4 + 10 * 3, 3), dtype=np.uint8)
@@ -265,6 +289,8 @@ def main():
             save_image[:, w + 10 : w * 2 + 10] = cv2.resize(label, (w, h))
             save_image[:, w * 2 + 20 : w * 3 + 20] = cv2.resize(coarse_pred, (w, h))
             save_image[:, w * 3 + 30 :] = cv2.resize(fine_pred, (w, h))
+
+            # Save predictions
             os.makedirs(opt.save_dir, exist_ok=True)
             cv2.imwrite(os.path.join(opt.save_dir, data["name"][0]), save_image)
 
