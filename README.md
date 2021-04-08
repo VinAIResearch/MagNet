@@ -17,7 +17,7 @@ IEEE Conference on Computer Vision and Pattern Recognition (CVPR).
 @inproceedings{m_Huynh-etal-CVPR21,
   author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
   title = {Progressive Semantic Segmentation},
-  year = {2021},
+  year = {2021}, \
   booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)},
 }
 ```
@@ -39,40 +39,66 @@ pip install -r requirements.txt
 ```
 
 ## Dataset
-
-### Cityscapes
-Please download two files `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip` in this [page](https://www.cityscapes-dataset.com/downloads/) to the directory `data` and run the script below to prepare the data:
-```bash
-# In root directory
-cd data
-sh ./prepare_cityscapes.sh
-```
-
-### DeepGlobe
-Please register [here](https://competitions.codalab.org/competitions/18468) and download **Starting Kit** of the `#1 Development` Phase in this [page](https://competitions.codalab.org/competitions/18468#participate-get_starting_kit) to the directory `data` and run the script below to prepare the data:
-```bash
-# In root directory
-cd data
-sh ./prepare_deepglobe.sh
-```
-
-### Gleason
-Following the challenge, we have prepared a processed images and ground-truths. To download the dataset, please run the script below:
-```bash
-# In root directory
-cd data
-sh ./prepare_gleason.sh
-```
+Please read this [document](data/README.md) to download and prepare the dataset.
 
 ## Pretrained models
+Please read this [document](checkpoints/README.md) to download checkpoints.
+
+## Evaluation
+
+To get the description of evaluation configs, please run the script below:
+```bash
+python test.py --help
+```
+
+Otherwise, there are sample scripts below to test with our pretrained models.
+
+### Cityscapes
+
+Full MagNet refinement:
+```bash 
+sh scripts/cityscapes/test_magnet.sh
+```
+MagNet-Fast refinement:
+```bash
+sh scripts/cityscapes/test_magnet_fast.sh
+```
+
+### Deepglobe
+
+Full MagNet refinement:
+```bash 
+sh scripts/deepglobe/test_magnet.sh
+```
+MagNet-Fast refinement:
+```bash
+sh scripts/deepglobe/test_magnet_fast.sh
+```
 
 ## Training
 
-## Testing
+### Training backbone networks
+
+Please reference to this [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train the backbone networks.
+
+### Training refinement modules
+
+To get the description of training configs, please run the script below:
+```bash
+python train.py --help
+```
+
+#### Cityscapes
+To train MagNet with Cityscapes dataset, please run this sample script:
+```bash
+sh scripts/cityscapes/train_magnet.sh
+```
+
+#### Deepglobe
+To train MagNet with Deepglobe dataset, please run this sample script:
+```bash 
+sh scripts/deepglobe/train_magnet.sh
+```
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
-
-
-
-
