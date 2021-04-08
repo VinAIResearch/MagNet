@@ -1,13 +1,11 @@
-import random
 import math
+import random
 
-import numpy as np
 import cv2
-
-from PIL import Image
-
+import numpy as np
 import torch
 import torchvision.transforms as TF
+from PIL import Image
 
 
 class SegCompose(object):

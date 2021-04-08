@@ -1,10 +1,10 @@
 import logging
 
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
+from magnet.model.base import BN_MOMENTUM, BatchNorm2d
 
-from magnet.model.base import BatchNorm2d, BN_MOMENTUM
 
 relu_inplace = True
 ALIGN_CORNERS = True

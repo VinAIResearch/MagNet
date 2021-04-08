@@ -3,6 +3,7 @@ import torch.utils.model_zoo as model_zoo
 
 from .base import Bottleneck
 
+
 __all__ = ["ResNet", "resnet50", "resnet101"]
 
 

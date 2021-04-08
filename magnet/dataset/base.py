@@ -1,13 +1,11 @@
 import os
 
-import numpy as np
 import cv2
-
+import numpy as np
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
-
-from magnet.utils.transform import Resize, Patching, RandomPair, NormalizeInverse
+from magnet.utils.transform import NormalizeInverse, Patching, RandomPair, Resize
 
 
 class BaseDataset(data.Dataset):

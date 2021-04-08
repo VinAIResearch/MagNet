@@ -1,31 +1,28 @@
-import os
 import math
+import os
 import time
 
-from tqdm import tqdm
-
-import numpy as np
 import cv2
-
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torchvision.ops import roi_align
-from torchvision.transforms.functional import to_pil_image
-
-from magnet.options.test import TestOptions
 from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
+from magnet.options.test import TestOptions
+from magnet.utils.blur import MedianBlur
 from magnet.utils.geometry import (
-    get_patch_coords,
     calculate_uncertainty,
+    ensemble,
+    get_patch_coords,
     get_uncertain_point_coords_on_grid,
     point_sample,
-    ensemble,
 )
-from magnet.utils.blur import MedianBlur
 from magnet.utils.metrics import confusion_matrix, get_freq_iou, get_overall_iou
+from torch.utils.data import DataLoader
+from torchvision.ops import roi_align
+from torchvision.transforms.functional import to_pil_image
+from tqdm import tqdm
 
 
 @torch.no_grad()

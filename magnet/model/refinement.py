@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .base import BatchNorm2d, BN_MOMENTUM, Bottleneck
+from .base import BN_MOMENTUM, BatchNorm2d, Bottleneck
 
 
 class RefinementMagNet(nn.Module):

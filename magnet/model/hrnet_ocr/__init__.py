@@ -4,22 +4,19 @@
 # Written by Ke Sun (sunk@mail.ustc.edu.cn), Jingyi Xie (hsfzxjy@gmail.com)
 # ------------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
 import numpy as np
-
 import torch
-import torch.nn as nn
 import torch._utils
+import torch.nn as nn
 import torch.nn.functional as F
+from magnet.model.base import BN_MOMENTUM, BatchNorm2d
 
-from magnet.model.base import BatchNorm2d, BN_MOMENTUM
-from .module import SpatialGather_Module, SpatialOCR_Module, HighResolutionModule, relu_inplace, ALIGN_CORNERS
 from .config import blocks_dict, config_hrnet_w18_ocr, config_hrnet_w48_ocr
+from .module import ALIGN_CORNERS, HighResolutionModule, SpatialGather_Module, SpatialOCR_Module, relu_inplace
 
 
 class HighResolutionNet(nn.Module):

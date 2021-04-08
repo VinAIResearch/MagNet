@@ -1,24 +1,21 @@
-import os
 import json
+import os
 from datetime import datetime
 
 import numpy as np
-from tqdm import tqdm
-
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from torchvision.ops import roi_align
-
-from tensorboardX import SummaryWriter
-
 from magnet.dataset import get_dataset_with_name
-from magnet.options.train import TrainOptions
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
-from magnet.utils.loss import OhemCrossEntropy
-from magnet.utils.metrics import get_freq_iou, confusion_matrix, get_overall_iou
+from magnet.options.train import TrainOptions
 from magnet.utils.geometry import calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
+from magnet.utils.loss import OhemCrossEntropy
+from magnet.utils.metrics import confusion_matrix, get_freq_iou, get_overall_iou
+from tensorboardX import SummaryWriter
+from torch.utils.data import DataLoader
+from torchvision.ops import roi_align
+from tqdm import tqdm
 
 
 def main():
