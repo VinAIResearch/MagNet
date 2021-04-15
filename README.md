@@ -35,7 +35,7 @@ The framework is tested on machines with the following environment:
 
 To install dependencies, please run the following command:
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## Dataset
