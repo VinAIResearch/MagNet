@@ -245,8 +245,8 @@ def main():
         fine_pred = cv2.resize(fine_pred, (ori_W, ori_H))
 
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        coarse_pred = (0.7 * image + 0.3 * coarse_pred).astype('uint8')
-        fine_pred = (0.7 * image + 0.3 * fine_pred).astype('uint8')
+        coarse_pred = (0.7 * image + 0.3 * coarse_pred).astype("uint8")
+        fine_pred = (0.7 * image + 0.3 * fine_pred).astype("uint8")
 
         # Save predictions
         image_name = opt.image.split("/")[-1].split(".")[0]
