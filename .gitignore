@@ -148,4 +148,3 @@ data/cityscapes
 data/*.zip
 runs/
 test_results/
-*.png

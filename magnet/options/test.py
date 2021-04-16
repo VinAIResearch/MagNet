@@ -7,6 +7,7 @@ class TestOptions(BaseOptions):
     def __init__(self):
         super().__init__()
         parser = self.parser
+        parser.add_argument("--image", type=str, help="image path to test (demo only)")
         parser.add_argument("--sub_batch_size", required=True, type=int, help="batch size for patch processing")
         parser.add_argument(
             "--n_patches",

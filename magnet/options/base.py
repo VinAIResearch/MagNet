@@ -9,8 +9,8 @@ class BaseOptions:
 
         # Dataset config
         parser.add_argument("--dataset", required=True, type=str, help="dataset name: cityscapes, deepglobe")
-        parser.add_argument("--root", required=True, type=str, help="path to images for training and testing")
-        parser.add_argument("--datalist", required=True, type=str, help="path to .txt containing image and label path")
+        parser.add_argument("--root", type=str, default="", help="path to images for training and testing")
+        parser.add_argument("--datalist", type=str, default="", help="path to .txt containing image and label path")
         parser.add_argument(
             "--scales", required=True, type=str, help="scales: w1-h1,w2-h2,... , e.g. 512-512,1024-1024,2048-2048"
         )

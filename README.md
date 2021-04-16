@@ -44,6 +44,30 @@ Please read this [document](data/README.md) to download and prepare the dataset.
 ## Pretrained models
 Please read this [document](checkpoints/README.md) to download checkpoints.
 
+## Demo
+
+We provide several demo scripts that you can use to test with your images. There are some sample images in `data/` that you can use.
+
+To test with Cityscapes images, please run the script below:
+- With MagNet refinement:
+```bash
+sh scripts/cityscapes/demo_magnet.sh <image_path>
+```
+- With MagNet-Fast refinement
+```bash
+sh scripts/cityscapes/demo_magnet_fast.sh <image_path>
+```
+
+To test with Deepglobe images, please run the script below:
+- With MagNet refinement:
+```bash
+sh scripts/deepglobe/demo_magnet.sh <image_path>
+```
+- With MagNet-Fast refinement
+```bash
+sh scripts/deepglobe/demo_magnet_fast.sh <image_path>
+```
+
 ## Evaluation
 
 To get the description of evaluation configs, please run the script below:

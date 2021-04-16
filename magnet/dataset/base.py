@@ -38,9 +38,10 @@ class BaseDataset(data.Dataset):
 
         # Parse the file datalist
         self.data = []
-        with open(opt.datalist, "r") as f:
-            for line in f.readlines():
-                self.data += [self.parse_info(line)]
+        if os.path.isfile(opt.datalist):
+            with open(opt.datalist, "r") as f:
+                for line in f.readlines():
+                    self.data += [self.parse_info(line)]
 
         self.scales = opt.scales  # Scale to this size
         self.crop_size = opt.crop_size  # Crop to this size
@@ -140,6 +141,35 @@ class BaseDataset(data.Dataset):
         """
         return image, label
 
+    def slice_image(self, image):
+        """Slice image to patches
+
+        Args:
+            image (np.array): H x W x 3
+                image to be sliced
+
+        Returns:
+            torch.Tensor: N x 3 x h x w
+                patches
+            torch.Tensor: N
+                indices of patches
+        """
+        image_patches = []
+        scale_idx = []
+
+        for scale_id, cropping_transform in enumerate(self.cropping_transforms):
+
+            # Crop data for each scale
+            image_crops = cropping_transform(image)
+
+            image_patches += list(map(lambda x: self.image_transform(x), image_crops))
+            scale_idx += [scale_id for _ in range(len(image_crops))]
+
+        image_patches = torch.stack(image_patches)
+        scale_idx = torch.tensor(scale_idx)
+
+        return image_patches, scale_idx
+
     def __getitem__(self, index):
 
         # Get data information
@@ -176,23 +206,9 @@ class BaseDataset(data.Dataset):
 
         # For testing
 
-        # Cropping with scales
-        image_patches = []
-        scale_idx = []
-
         # Convert label
         label = self.image2class(label)
-
-        for scale_id, cropping_transform in enumerate(self.cropping_transforms):
-
-            # Crop data for each scale
-            image_crops = cropping_transform(image)
-
-            image_patches += list(map(lambda x: self.image_transform(x), image_crops))
-            scale_idx += [scale_id for _ in range(len(image_crops))]
-
-        image_patches = torch.stack(image_patches)
-        scale_idx = torch.tensor(scale_idx)
+        image_patches, scale_idx = self.slice_image(image)
 
         return {
             "image_patches": image_patches,
