@@ -48,24 +48,24 @@ Please read this [document](checkpoints/README.md) to download checkpoints.
 
 We provide several demo scripts that you can use to test with your images. There are some sample images in `data/` that you can use.
 
-To test with Cityscapes images, please run the script below:
+To test with a Cityscapes image, e.g `data/frankfurt_000000_000294_leftImg8bit.png`, please run the script below:
 - With MagNet refinement:
 ```bash
-sh scripts/cityscapes/demo_magnet.sh <image_path>
+sh scripts/cityscapes/demo_magnet.sh data/frankfurt_000000_000294_leftImg8bit.png
 ```
 - With MagNet-Fast refinement
 ```bash
-sh scripts/cityscapes/demo_magnet_fast.sh <image_path>
+sh scripts/cityscapes/demo_magnet_fast.sh data/frankfurt_000000_000294_leftImg8bit.png
 ```
 
-To test with Deepglobe images, please run the script below:
+To test with a Deepglobe image, e.g `data/96841_sat.jpg`, please run the script below:
 - With MagNet refinement:
 ```bash
-sh scripts/deepglobe/demo_magnet.sh <image_path>
+sh scripts/deepglobe/demo_magnet.sh data/96841_sat.jpg
 ```
 - With MagNet-Fast refinement
 ```bash
-sh scripts/deepglobe/demo_magnet_fast.sh <image_path>
+sh scripts/deepglobe/demo_magnet_fast.sh data/96841_sat.jpg
 ```
 
 ## Evaluation
