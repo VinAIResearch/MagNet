@@ -9,7 +9,7 @@ from magnet.dataset import get_dataset_with_name
 from magnet.model import get_model_with_name
 from magnet.model.refinement import RefinementMagNet
 from magnet.options.train import TrainOptions
-from magnet.utils.geometry import calculate_uncertainty, get_uncertain_point_coords_on_grid, point_sample
+from magnet.utils.geometry import calculate_certainty, get_uncertain_point_coords_on_grid, point_sample
 from magnet.utils.loss import OhemCrossEntropy
 from magnet.utils.metrics import confusion_matrix, get_freq_iou, get_overall_iou
 from tensorboardX import SummaryWriter
@@ -130,8 +130,8 @@ def main():
             with torch.no_grad():
 
                 # Calulate error score
-                uncertainty_score = calculate_uncertainty(crop_preds)
-                certainty_score = 1.0 - calculate_uncertainty(fine_pred)
+                uncertainty_score = 1.0 - calculate_certainty(crop_preds)
+                certainty_score = calculate_certainty(fine_pred)
                 error_score = certainty_score * uncertainty_score
 
                 b, c, h, w = crop_preds.shape

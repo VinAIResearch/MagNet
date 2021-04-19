@@ -9,8 +9,8 @@ python test.py --dataset deepglobe \
 --pretrained checkpoints/deepglobe_fpn.pth \
 --pretrained_refinement checkpoints/deepglobe_refinement.pth \
 --num_classes 7 \
---sub_batch_size 2 \
---n_points 1.0 \
+--sub_batch_size 1 \
+--n_points 0.75 \
 --n_patches -1 \
 --smooth_kernel 11 \
 --save_pred \

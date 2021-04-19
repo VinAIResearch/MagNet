@@ -87,7 +87,7 @@ def ensemble(patches, coords, output_size):
     return output, mask
 
 
-def calculate_uncertainty(seg_probs):
+def calculate_certainty(seg_probs):
     """Calculate the uncertainty of segmentation probability
 
     Args:

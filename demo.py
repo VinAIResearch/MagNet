@@ -11,7 +11,7 @@ from magnet.model.refinement import RefinementMagNet
 from magnet.options.test import TestOptions
 from magnet.utils.blur import MedianBlur
 from magnet.utils.geometry import (
-    calculate_uncertainty,
+    calculate_certainty,
     ensemble,
     get_patch_coords,
     get_uncertain_point_coords_on_grid,
@@ -139,7 +139,7 @@ def main():
         coords[:, 3] = coords[:, 3] * final_output.shape[2]
 
         # Calculate uncertainty
-        uncertainty = calculate_uncertainty(final_output)
+        uncertainty = 1.0 - calculate_certainty(final_output)
         patch_uncertainty = roi_align(uncertainty, [coords], output_size=(opt.input_size[1], opt.input_size[0]))
         patch_uncertainty = patch_uncertainty.mean((1, 2, 3))
 
@@ -180,7 +180,7 @@ def main():
         fine_pred, mask = ensemble(fine_pred, selected_ratios, scale)
 
         # Calculate certainty of fine_pred
-        certainty_score = 1.0 - calculate_uncertainty(fine_pred)
+        certainty_score = calculate_certainty(fine_pred)
 
         if opt.n_patches > 0:
             certainty_score[:, :, mask] = 0.0
