@@ -9,7 +9,7 @@ python demo.py --dataset cityscapes \
 --pretrained_refinement checkpoints/cityscapes_refinement_512.pth checkpoints/cityscapes_refinement_1024.pth checkpoints/cityscapes_refinement_2048.pth \
 --num_classes 19 \
 --sub_batch_size 1 \
---n_points 65536 \
+--n_points 32768 \
 --n_patches -1 \
 --smooth_kernel 5 \
 --save_pred \
