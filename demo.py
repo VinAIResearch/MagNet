@@ -112,7 +112,7 @@ def main():
     image_patches, scale_idx = dataset.slice_image(image)
 
     total_time = time.time()
-    coarse_pred = None
+    intermediate_preds = []
 
     # Refine from coarse-to-fine
     for idx, (ratios, scale) in enumerate(zip(patch_coords, opt.scales)):
@@ -123,7 +123,7 @@ def main():
             # Get prediction
             final_output = get_batch_predictions(model, 1, image_patches[0:1].to(device))
 
-            coarse_pred = final_output.clone()
+            intermediate_preds = [final_output.clone()]
             continue
 
         if opt.n_patches == 0:
@@ -228,33 +228,29 @@ def main():
             .scatter_(2, error_point_indices, fine_pred)
             .view(1, opt.num_classes, scale[1], scale[0])
         )
+        intermediate_preds.append(final_output.clone())
 
     processing_time = time.time() - total_time
     print("Done processing image in %.2f seconds" % processing_time)
-    print("Saving output...")
-    coarse_pred = F.interpolate(coarse_pred, (H, W), mode="bilinear", align_corners=False).argmax(1).cpu().numpy()
-
-    final_output = F.interpolate(final_output, (H, W), mode="bilinear", align_corners=False).argmax(1).cpu().numpy()
 
     if opt.save_pred:
-
-        # Convert predictions to images
-        coarse_pred = dataset.class2bgr(coarse_pred[0])
-        fine_pred = dataset.class2bgr(final_output[0])
-        coarse_pred = cv2.resize(coarse_pred, (ori_W, ori_H))
-        fine_pred = cv2.resize(fine_pred, (ori_W, ori_H))
-
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        coarse_pred = (0.7 * image + 0.3 * coarse_pred).astype("uint8")
-        fine_pred = (0.7 * image + 0.3 * fine_pred).astype("uint8")
-
-        # Save predictions
         image_name = opt.image.split("/")[-1].split(".")[0]
-        os.makedirs(opt.save_dir, exist_ok=True)
-        coarse_path = os.path.join(opt.save_dir, image_name + "_coarse.png")
-        fine_path = os.path.join(opt.save_dir, image_name + "_fine.png")
-        cv2.imwrite(coarse_path, coarse_pred)
-        cv2.imwrite(fine_path, fine_pred)
+
+        print("Saving output to {}/{}".format(opt.save_dir, image_name))
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        os.makedirs(os.path.join(opt.save_dir, image_name), exist_ok=True)
+
+        for scale, pred in zip(opt.scales, intermediate_preds):
+            pred = F.interpolate(pred, (H, W), mode="bilinear", align_corners=False).argmax(1).cpu().numpy()
+
+            # Convert predictions to images
+            pred = dataset.class2bgr(pred[0])
+            pred = cv2.resize(pred, (ori_W, ori_H))
+            pred = (0.5 * image + 0.5 * pred).astype("uint8")
+
+            # Save predictions
+            pred_path = os.path.join(opt.save_dir, image_name, "{}x{}.jpg".format(scale[0], scale[1]))
+            cv2.imwrite(pred_path, pred)
 
 
 if __name__ == "__main__":
