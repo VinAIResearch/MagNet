@@ -8,6 +8,6 @@ python train.py --dataset deepglobe \
 --model fpn \
 --pretrained checkpoints/deepglobe_fpn.pth \
 --num_classes 7 \
---batch_size 4 \
+--batch_size 8 \
 --task_name deepglobe_refinement \
 --lr 0.001
