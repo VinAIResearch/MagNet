@@ -25,7 +25,7 @@ Details of the MagNet model architecture and experimental results can be found i
 
 This current code provides configurations to train, evaluate on two datasets: **Cityscapes** and **DeepGlobe**. To prepare the datasets, in the `./data` directory, please do following steps:
 ### For Cityscapes
-1. Register an account at this [page](https://www.cityscapes-dataset.com/) and login.
+1. Register an account on this [page](https://www.cityscapes-dataset.com/) and log in.
 2. Download `leftImg8bit_trainvaltest.zip` and `gtFine_trainvaltest.zip`.
 3. Run the script below to extract zip files to correct locations:
 ```bash
@@ -33,14 +33,14 @@ sh ./prepare_cityscapes.sh
 ```
 
 ### For DeepGlobe
-1. Register an account at this [page](https://competitions.codalab.org/competitions/18468) and login.
+1. Register an account on this [page](https://competitions.codalab.org/competitions/18468) and log in.
 2. Go to this [page]() and download **Starting Kit** of the `#1 Development` Phase.
 3. Run the script below to extract zip files to correct locations:
 ```bash
 sh ./prepare_deepglobe.sh
 ```
 
-If you want to train/evaluate with your own dataset, following steps in this [document](CUSTOM_DATA.md)
+If you want to train/evaluate with your dataset, follow the steps in this [document](CUSTOM_DATA.md)
 
 ## Getting started
 ### Requirements
@@ -59,21 +59,21 @@ Performance of pre-trained models on datasets:
 | Dataset | Backbone | Baseline IoU (%) | MagNet IoU (%) | MagNet-Fast IoU (%) | Download |
 | -------- | -------- | -------- | -------- | -------- | -------- |
 | Cityscapes | HRNetW18+OCR | 63.24 | 68.20 | 67.37 |[backbone](https://public.vinai.io/magnet_cvpr2021/cityscapes_hrnet.pth)<br>[refine_512x256](https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_512.pth)<br>[refine_1024x512](https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_1024.pth)<br>[refine_2048x1024](https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_2048.pth) |
-| Deepglobe | Resnet50-FPN | 67.22 | 72.10 | 68.22 | [backbone](https://public.vinai.io/magnet_cvpr2021/deepglobe_fpn.pth)<br>[refine](https://public.vinai.io/magnet_cvpr2021/deepglobe_refinement.pth)
+| DeepGlobe | Resnet50-FPN | 67.22 | 72.10 | 68.22 | [backbone](https://public.vinai.io/magnet_cvpr2021/deepglobe_fpn.pth)<br>[refine](https://public.vinai.io/magnet_cvpr2021/deepglobe_refinement.pth)
 
-Please manually download pretrained models to `./checkpoints` or run the script below:
+Please manually download pre-trained models to `./checkpoints` or run the script below:
 ```bash
 cd checkpoints
-sh ./download_cityscapes.sh # for cityscapes
+sh ./download_cityscapes.sh # for Cityscapes
 # or
-sh ./download_deepglobe.sh # for deepglobe
+sh ./download_deepglobe.sh # for DeepGlobe
 ```
 
 ### Usage
 
 You can run this [Google Colab Notebook](https://colab.research.google.com/drive/1WTdfIQIEQrnoX40YIzs3HqeIKSZD_iPG?usp=sharing) to test our pre-trained models with street-view images. Please follow the instructions in the notebook to experience the performance of our network.
 
-If you want to test our framework with your local machine,:
+If you want to test our framework on your local machine:
 
 1. To test with a Cityscapes image, e.g `data/frankfurt_000001_003056_leftImg8bit.png`:
 - With MagNet refinement:
