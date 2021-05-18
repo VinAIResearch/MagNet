@@ -168,7 +168,7 @@ class HighResolutionNet(nn.Module):
 
         return nn.Sequential(*modules), num_inchannels
 
-    def forward(self, x, return_feat=False):
+    def forward(self, x, return_auxilary=False):
         _, _, H, W = x.shape
         x = self.conv1(x)
         x = self.bn1(x)
@@ -216,10 +216,9 @@ class HighResolutionNet(nn.Module):
 
         feats = torch.cat([x[0], x1, x2, x3], 1)
 
-        out_aux_seg = []
-
         # ocr
         out_aux = self.aux_head(feats)
+        out_aux = F.interpolate(out_aux, size=(H, W), mode="bilinear", align_corners=ALIGN_CORNERS)
         # compute contrast feature
         feats = self.conv3x3_ocr(feats)
 
@@ -227,14 +226,11 @@ class HighResolutionNet(nn.Module):
         feats = self.ocr_distri_head(feats, context)
 
         out = self.cls_head(feats)
+        out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=ALIGN_CORNERS)
 
-        out_aux_seg.append(out_aux)
-        out_aux_seg.append(out)
-        if not return_feat:
-            x = (out + 0.4 * out_aux) / 1.4  # out_aux_seg
-            return F.interpolate(x, size=(H, W), mode="bilinear", align_corners=ALIGN_CORNERS)
-        else:
-            return (out + 0.4 * out_aux) / 1.4, feats
+        if return_auxilary:
+            return out, out_aux
+        return (out + 0.4 * out_aux) / 1.4
 
     def init_weights(
         self,
@@ -258,10 +254,10 @@ class HighResolutionNet(nn.Module):
                 k.replace("last_layer", "aux_head").replace("model.", ""): v for k, v in pretrained_dict.items()
             }
             pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
+            for k in pretrained_dict:
+                print("Update weight for layer", k)
             model_dict.update(pretrained_dict)
             self.load_state_dict(model_dict)
-        elif pretrained:
-            raise RuntimeError("No such file {}".format(pretrained))
 
     def load_state_dict(self, state_dict):
         state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}

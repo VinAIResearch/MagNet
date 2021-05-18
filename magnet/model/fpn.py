@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -64,7 +65,7 @@ class ResnetFPN(nn.Module):
         _, _, H, W = y.size()
         return F.interpolate(x, size=(H, W), **self._up_kwargs) + y
 
-    def forward(self, image):
+    def forward(self, image, return_auxilary=False, **kwargs):
         _, _, H, W = image.shape
         c2, c3, c4, c5 = self.resnet_backbone(image)
         # Top-down
@@ -91,3 +92,10 @@ class ResnetFPN(nn.Module):
         output = F.interpolate(output, size=(H, W), **self._up_kwargs)
 
         return output
+
+    def init_weights(self, pretrained=""):
+        if os.path.isfile(pretrained):
+            state_dict = torch.load(pretrained)
+            state_dict = {k.replace('model.', ''): v for k, v in state_dict.items()}
+            self.load_state_dict(state_dict, strict=False)
+            print("==> Load pretrained weight", pretrained)

@@ -167,7 +167,33 @@ All results will be stored at `test_results/demo/639004_sat`
 
 ### Training backbone networks
 
-Please refer to this [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train the backbone networks.
+We customize the training script from [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train our backbones. Please first go to this directory `./backbone` and run following scripts:
+
+#### HRNetW18V2+OCR for Cityscapes
+Download pretrained weights on ImageNet:
+```
+# In ./backbone
+cd pretrained_weights
+wget https://public.vinai.io/chuonghm/hrnet_w18_v2_imagenet.pth
+```
+Training the model:
+```
+# In ./backbone
+python train.py --cfg experiments/cityscapes/hrnet_ocr_w18_train_256x128_sgd_lr1e-2_wd5e-4_bs_12_epoch484.yaml
+```
+The logs of training are stored at `./log/cityscapes/HRNetW18_OCR`.
+
+The checkpoint of backbone after training are stored at `./output/cityscapes/hrnet_ocr_w18_train_256x128_sgd_lr1e-2_wd5e-4_bs_12_epoch484/best.pth`.
+This checkpoint is used to train further refinement modules.
+#### Resnet50-FPN for Deepglobe
+Training the model:
+```
+# In ./backbone
+python train.py --cfg experiments/deepglobe/resnet_fpn_train_612x612_sgd_lr1e-2_wd5e-4_bs_12_epoch484.yaml
+```
+The logs of training are stored at `./log/deepglobe/ResnetFPN`.
+
+The checkpoint of backbone after training are stored at `./output/deepglobe/resnet_fpn_train_612x612_sgd_lr1e-2_wd5e-4_bs_12_epoch484/best.pth`. This checkpoint is used to train further refinement modules.
 
 ### Training refinement modules
 

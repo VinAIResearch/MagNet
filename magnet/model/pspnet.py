@@ -61,7 +61,7 @@ class PSPNet(nn.Module):
         state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
         super().load_state_dict(state_dict, strict=False)
 
-    def forward(self, x, return_feat=False):
+    def forward(self, x, return_auxilary=False):
         f = self.feats(x)[-1]
         p = self.psp(f)
         p = self.drop_1(p)
@@ -80,7 +80,8 @@ class PSPNet(nn.Module):
 
         p = self.final(p)
         p = F.interpolate(p, size=x.size()[2:], mode="bilinear", align_corners=False)
-        p = (p + 0.4 * auxiliary) / 1.4
-        if return_feat:
-            return p, f
-        return p
+        
+        if return_auxilary:
+            return p, auxiliary
+
+        return (p + 0.4 * auxiliary) / 1.4
