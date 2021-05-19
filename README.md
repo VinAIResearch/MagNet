@@ -15,7 +15,7 @@ Details of the MagNet model architecture and experimental results can be found i
 @inproceedings{m_Huynh-etal-CVPR21,
   author = {Chuong Huynh and Anh Tran and Khoa Luu and Minh Hoai},
   title = {Progressive Semantic Segmentation},
-  year = {2021}, \
+  year = {2021},
   booktitle = {Proceedings of the {IEEE} Conference on Computer Vision and Pattern Recognition (CVPR)},
 }
 ```
@@ -446,8 +446,8 @@ python test.py --dataset deepglobe \
 sh scripts/deepglobe/test_magnet_fast.sh
 ```
 
-## References
-[1] [High-resolution networks and Segmentation Transformer for Semantic Segmentation](https://github.com/HRNet/HRNet-Semantic-Segmentation)
+## Acknowledgments
+Thanks to [High-resolution networks and Segmentation Transformer for Semantic Segmentation](https://github.com/HRNet/HRNet-Semantic-Segmentation) for the backbone training script.
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
