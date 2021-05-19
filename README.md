@@ -167,10 +167,10 @@ All results will be stored at `test_results/demo/639004_sat`
 
 ### Training backbone networks
 
-We customize the training script from [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train our backbones. Please first go to this directory `./backbone` and run following scripts:
+We customize the training script from [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train our backbones. Please first go to this directory `./backbone` and run the following scripts:
 
 #### HRNetW18V2+OCR for Cityscapes
-Download pretrained weights on ImageNet:
+Download pre-trained weights on ImageNet:
 ```
 # In ./backbone
 cd pretrained_weights
@@ -445,6 +445,9 @@ python test.py --dataset deepglobe \
 # or in short, run the script below
 sh scripts/deepglobe/test_magnet_fast.sh
 ```
+
+## References
+[1] [High-resolution networks and Segmentation Transformer for Semantic Segmentation](https://github.com/HRNet/HRNet-Semantic-Segmentation)
 
 ## Contact
 If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
