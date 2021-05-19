@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -96,6 +97,6 @@ class ResnetFPN(nn.Module):
     def init_weights(self, pretrained=""):
         if os.path.isfile(pretrained):
             state_dict = torch.load(pretrained)
-            state_dict = {k.replace('model.', ''): v for k, v in state_dict.items()}
+            state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
             self.load_state_dict(state_dict, strict=False)
             print("==> Load pretrained weight", pretrained)

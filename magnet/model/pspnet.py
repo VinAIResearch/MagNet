@@ -80,7 +80,7 @@ class PSPNet(nn.Module):
 
         p = self.final(p)
         p = F.interpolate(p, size=x.size()[2:], mode="bilinear", align_corners=False)
-        
+
         if return_auxilary:
             return p, auxiliary
 

@@ -1,23 +1,18 @@
-
 # ------------------------------------------------------------------------------
 # Copyright (c) Microsoft
 # Licensed under the MIT License.
 # Written by Ke Sun (sunk@mail.ustc.edu.cn)
 # ------------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
+from __future__ import absolute_import, division, print_function
 
 from yacs.config import CfgNode as CN
 
 
 _C = CN()
 
-_C.OUTPUT_DIR = ''
-_C.LOG_DIR = ''
+_C.OUTPUT_DIR = ""
+_C.LOG_DIR = ""
 _C.GPUS = (0,)
 _C.WORKERS = 4
 _C.PRINT_FREQ = 20
@@ -33,8 +28,8 @@ _C.CUDNN.ENABLED = True
 
 # common params for NETWORK
 _C.MODEL = CN()
-_C.MODEL.NAME = 'seg_hrnet'
-_C.MODEL.PRETRAINED = ''
+_C.MODEL.NAME = "seg_hrnet"
+_C.MODEL.PRETRAINED = ""
 _C.MODEL.ALIGN_CORNERS = True
 _C.MODEL.NUM_OUTPUTS = 1
 _C.MODEL.EXTRA = CN(new_allowed=True)
@@ -55,17 +50,17 @@ _C.LOSS.BALANCE_WEIGHTS = [1]
 
 # DATASET related params
 _C.DATASET = CN()
-_C.DATASET.ROOT = ''
-_C.DATASET.DATASET = 'cityscapes'
+_C.DATASET.ROOT = ""
+_C.DATASET.DATASET = "cityscapes"
 _C.DATASET.NUM_CLASSES = 19
-_C.DATASET.TRAIN_SET = 'list/cityscapes/train.lst'
-_C.DATASET.EXTRA_TRAIN_SET = ''
-_C.DATASET.TEST_SET = 'list/cityscapes/val.lst'
+_C.DATASET.TRAIN_SET = "list/cityscapes/train.lst"
+_C.DATASET.EXTRA_TRAIN_SET = ""
+_C.DATASET.TEST_SET = "list/cityscapes/val.lst"
 
 # training
 _C.TRAIN = CN()
 
-_C.TRAIN.FREEZE_LAYERS = ''
+_C.TRAIN.FREEZE_LAYERS = ""
 _C.TRAIN.FREEZE_EPOCHS = -1
 _C.TRAIN.NONBACKBONE_KEYWORDS = []
 _C.TRAIN.NONBACKBONE_MULT = 10
@@ -86,7 +81,7 @@ _C.TRAIN.LR_STEP = [90, 110]
 _C.TRAIN.LR = 0.01
 _C.TRAIN.EXTRA_LR = 0.001
 
-_C.TRAIN.OPTIMIZER = 'sgd'
+_C.TRAIN.OPTIMIZER = "sgd"
 _C.TRAIN.MOMENTUM = 0.9
 _C.TRAIN.WD = 0.0001
 _C.TRAIN.NESTEROV = False
@@ -104,7 +99,6 @@ _C.TRAIN.SHUFFLE = True
 _C.TRAIN.NUM_SAMPLES = 0
 
 
-
 # testing
 _C.TEST = CN()
 
@@ -116,7 +110,7 @@ _C.TEST.BATCH_SIZE_PER_GPU = 32
 # only testing some samples
 _C.TEST.NUM_SAMPLES = 0
 
-_C.TEST.MODEL_FILE = ''
+_C.TEST.MODEL_FILE = ""
 _C.TEST.FLIP_TEST = False
 _C.TEST.MULTI_SCALE = False
 _C.TEST.SCALE_LIST = [1]
@@ -134,15 +128,15 @@ _C.DEBUG.SAVE_HEATMAPS_PRED = False
 
 def update_config(cfg, args):
     cfg.defrost()
-    
+
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
     cfg.freeze()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    with open(sys.argv[1], 'w') as f:
-        print(_C, file=f)
 
+    with open(sys.argv[1], "w") as f:
+        print(_C, file=f)
