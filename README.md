@@ -5,7 +5,7 @@
 
 # Progressive Semantic Segmentation (MagNet)
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1WTdfIQIEQrnoX40YIzs3HqeIKSZD_iPG?usp=sharing) [![arXiv](https://img.shields.io/badge/arXiv-2104.03778-green.svg)](https://arxiv.org/abs/2104.03778)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1WTdfIQIEQrnoX40YIzs3HqeIKSZD_iPG?usp=sharing) [![arXiv](https://img.shields.io/badge/arXiv-2104.03778-green.svg)](https://arxiv.org/abs/2104.03778) [![video](https://img.shields.io/badge/video-youtube-red.svg)](https://youtu.be/40Kw8QLym7E)
 
 [**MagNet**](https://github.com/VinAIResearch/MagNet), a multi-scale framework that resolves local ambiguity by looking at the image at multiple magnification levels, has multiple processing stages, where each stage corresponds to a magnification level, and the output of one stage is fed into the next stage for coarse-to-fine information propagation. Experiments on three high-resolution datasets of urban views, aerial scenes, and medical images show that MagNet consistently outperforms the state-of-the-art methods by a significant margin.
 ![](https://i.imgur.com/fCPhKyX.png)
