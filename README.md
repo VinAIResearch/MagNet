@@ -450,4 +450,4 @@ sh scripts/deepglobe/test_magnet_fast.sh
 Thanks to [High-resolution networks and Segmentation Transformer for Semantic Segmentation](https://github.com/HRNet/HRNet-Semantic-Segmentation) for the backbone training script.
 
 ## Contact
-If you have any question, please drop an email to [v.chuonghm@vinai.io](mailto:v.chuonghm@vinai.io) or create an issue on this repository.
+If you have any question, please drop an email to [minhchuong.itus@gmail.com](mailto:minhchuong.itus@gmail.com) or create an issue on this repository.
