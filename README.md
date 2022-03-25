@@ -253,7 +253,7 @@ To train MagNet with Cityscapes dataset, please run this sample script:
 ```bash
 python train.py --dataset cityscapes \
                 --root data/cityscapes \
-                --datalist data/list/cityscapes/val.txt \
+                --datalist data/list/cityscapes/train.txt \
                 --scales 256-128,512-256,1024-512,2048-1024 \
                 --crop_size 256 128 \
                 --input_size 256 128 \
