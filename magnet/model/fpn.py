@@ -11,7 +11,7 @@ from .resnet import resnet50
 class ResnetFPN(nn.Module):
     def __init__(self, n_labels):
         super(ResnetFPN, self).__init__()
-        self.resnet_backbone = resnet50()
+        self.resnet_backbone = resnet50(True)
         self._up_kwargs = {"mode": "bilinear", "align_corners": False}
         # Top layer
         self.toplayer = nn.Conv2d(2048, 256, kernel_size=1, stride=1, padding=0)  # Reduce channels
