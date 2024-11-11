@@ -58,8 +58,8 @@ Performance of pre-trained models on datasets:
 
 | Dataset | Backbone | Baseline IoU (%) | MagNet IoU (%) | MagNet-Fast IoU (%) | Download |
 | -------- | -------- | -------- | -------- | -------- | -------- |
-| Cityscapes | HRNetW18+OCR | 63.24 | 68.20 | 67.37 |[backbone](https://public.vinai.io/magnet_cvpr2021/cityscapes_hrnet.pth)<br>[refine_512x256](https://drive.google.com/file/d/1B6NJgi2ujpW7K460vugRhWesK73LJKsb/view?usp=sharing)<br>[refine_1024x512](https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_1024.pth)<br>[refine_2048x1024](https://public.vinai.io/magnet_cvpr2021/cityscapes_refinement_2048.pth) |
-| DeepGlobe | Resnet50-FPN | 67.22 | 72.10 | 68.22 | [backbone](https://drive.google.com/file/d/1EFj3qNR7Xlp9DqOlKZAsyzkPUSFEY6OP/view?usp=sharing)<br>[refine](https://public.vinai.io/magnet_cvpr2021/deepglobe_refinement.pth)
+| Cityscapes | HRNetW18+OCR | 63.24 | 68.20 | 67.37 |[backbone](https://drive.google.com/file/d/1FQghomK8Ssc0zHKrvhEMIJQrbVXiWa8H/view?usp=sharing)<br>[refine_512x256](https://drive.google.com/file/d/1B6NJgi2ujpW7K460vugRhWesK73LJKsb/view?usp=sharing)<br>[refine_1024x512](https://drive.google.com/file/d/1AShNe-1I8wPP_5kHK4G_wO8pSg_d1LKQ/view?usp=sharing)<br>[refine_2048x1024](https://drive.google.com/file/d/1XhVlMN2uzJ3qsrdJ19JvymeYDpvwMD82/view?usp=sharing) |
+| DeepGlobe | Resnet50-FPN | 67.22 | 72.10 | 68.22 | [backbone](https://drive.google.com/file/d/1EFj3qNR7Xlp9DqOlKZAsyzkPUSFEY6OP/view?usp=sharing)<br>[refine](https://drive.google.com/file/d/1hybFYyMTCpdojzYPksrw5DdDL9yUH3L-/view?usp=sharing)
 
 Please manually download pre-trained models to `./checkpoints` or run the script below:
 ```bash
@@ -170,12 +170,8 @@ All results will be stored at `test_results/demo/639004_sat`
 We customize the training script from [HRNet repository](https://github.com/HRNet/HRNet-Semantic-Segmentation) to train our backbones. Please first go to this directory `./backbone` and run the following scripts:
 
 #### HRNetW18V2+OCR for Cityscapes
-Download pre-trained weights on ImageNet:
-```
-# In ./backbone
-cd pretrained_weights
-wget https://public.vinai.io/chuonghm/hrnet_w18_v2_imagenet.pth
-```
+Download [pre-trained weights](https://drive.google.com/file/d/1kQ5wnEQgUP9gjwRuhhaBZS2IGFc2ES6_/view?usp=sharing) on ImageNet and put into folder `./pretrained_weights`.
+
 Training the model:
 ```
 # In ./backbone
